@@ -45,7 +45,7 @@ def to_number(s):
 
 
 def init_webdriver():
-    chromedriver = "d:/temp/chromedriver.exe"
+    chromedriver = "chromedriver.exe"
     os.environ["webdriver.chrome.driver"] = chromedriver
 
     chrome_options = Options()
@@ -63,8 +63,10 @@ def init_webdriver():
 
     return driver
 
+
 def load_creds(filename):
-    return json.load(open(filename,'r',encoding='utf-8', errors='ignore'))
+    return json.load(open(filename, 'r', encoding='utf-8', errors='ignore'))
+
 
 def etree_pipeline(driver):
     source = driver_page_source_plus(driver)
@@ -105,6 +107,23 @@ def login_to_instagram(driver):
 def clean_handle(handle):
     clean = handle.split('/')[-1].replace('@', '').lower()
     return clean
+
+
+def write_dict_to_csv(filename, fieldnames, d=None, mode='a'):
+    if mode == 'w':
+        f = open(filename, 'w', encoding="utf-8", errors="ignore")
+        writer = csv.DictWriter(f,
+                                lineterminator="\n",
+                                fieldnames=fieldnames)
+        writer.writeheader()
+        f.close()
+    if d is not None:
+        f = open(filename, 'a', encoding="utf-8", errors="ignore")
+        writer = csv.DictWriter(f,
+                                lineterminator="\n",
+                                fieldnames=fieldnames)
+        writer.writerow(d)
+        f.close()
 
 
 if __name__ == '__main__':
