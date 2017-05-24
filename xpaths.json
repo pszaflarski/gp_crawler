@@ -1,0 +1,35 @@
+{
+  "trigger": "//*[@id='product-price']",
+  "scrape_data": {
+    "price": {
+      "xpath": "//*[@id='product-price']",
+      "multiple": false,
+      "format": "text"
+    },
+    "description": {
+      "xpath": "//*[@id='product-desc']",
+      "multiple": false,
+      "format": "html"
+    },
+    "name": {
+      "xpath": "//*[@id='product-name']",
+      "multiple": false,
+      "format": "text"
+    },
+    "sku": {
+      "xpath": "//*[@id='product-sku']",
+      "multiple": false,
+      "format": "text"
+    },
+    "images": {
+      "xpath": "//*[@id='product-thumbs']",
+      "multiple": true,
+      "format": "attribute:product-image"
+    },
+    "main_image": {
+      "xpath": "//*[@id='product-main_image']",
+      "multiple": false,
+      "format": "attribute:src"
+    }
+  }
+}
