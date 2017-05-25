@@ -40,7 +40,7 @@ def get_links(tree, current_url):
 
     links_on_page = set(rel_to_abs_l(current_url, [x for x in e]))
 
-    e = tree.xpath("//*[contains(@src,'.htm')]")
+    e = tree.xpath("//*[contains(@src,'.htm')]/@src")
 
     links_on_page.update(set(rel_to_abs_l(current_url, [x for x in e])))
 
