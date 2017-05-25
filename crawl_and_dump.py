@@ -3,6 +3,7 @@ from general_tools import *
 from urllib.parse import urljoin
 
 from hashlib import sha256
+import argparse
 
 import psycopg2
 import boto3
@@ -34,14 +35,14 @@ def rel_to_abs_l(base_url, l):
     return abs_links
 
 
-def get_links(tree):
+def get_links(tree, current_url):
     e = tree.xpath("//a/@href")
 
-    links_on_page = set(rel_to_abs_l(driver.current_url, [x for x in e]))
+    links_on_page = set(rel_to_abs_l(current_url, [x for x in e]))
 
     e = tree.xpath("//*[contains(@src,'.htm')]")
 
-    links_on_page.update(set(rel_to_abs_l(driver.current_url, [x for x in e])))
+    links_on_page.update(set(rel_to_abs_l(current_url, [x for x in e])))
 
     return links_on_page
 
@@ -85,9 +86,7 @@ def store_data(start_url, url, internal, external, source, scraped_at, creds):
     store_postgres("public.crawlerpages", [start_url, url, list(internal), list(external), hashfile, scraped_at],
                    postgres_creds)
 
-
-if __name__ == '__main__':
-    start_url = 'http://www.fuschia.ie/'
+def main(start_url):
 
     driver = init_webdriver()
 
@@ -109,7 +108,7 @@ if __name__ == '__main__':
 
         tree = etree_pipeline(driver)
 
-        links = get_links(tree)
+        links = get_links(tree, current_url)
 
         external = set([x for x in links if not is_internal(start_url, x)])
         internal = set([x for x in links if x not in external])
@@ -128,3 +127,23 @@ if __name__ == '__main__':
         if len(to_visit) == 0: break
 
         print("to visit:", len(to_visit), ", visited:", visited_count)
+    driver.quit()
+
+def main_multiprocess(index, queue_csv = "queue.csv"):
+    reader = csv.reader(open(queue_csv,'r',encoding='utf-8', errors='ignore'))
+    i = int(index)
+    start_url = [x[0] for x in reader][i]
+    main(start_url)
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-index', action='store')
+    args = parser.parse_args()
+    i = args.index
+
+    if i is None:
+        start_url = 'http://www.fuschia.ie/'
+        main(start_url)
+    else:
+        main_multiprocess(i)

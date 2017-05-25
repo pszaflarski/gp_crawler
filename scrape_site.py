@@ -84,6 +84,6 @@ if __name__ == '__main__':
             print("product found at:", row[1], end="==>")
 
             output = scrape(tree, scrape_data)
-            output.update({"url":row[1]})
+            output.update({"url": row[1]})
             write_dict_to_csv(output_file, fieldnames, d=output, mode='a')
             print(output)
