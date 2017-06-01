@@ -80,10 +80,12 @@ def store_data(start_url, url, internal, external, source, scraped_at, creds):
 
     s3_creds = creds['s3']
     postgres_creds = creds['postgres']
+    sources_table = creds['settings']['sources_table']
+    s3_bucket = creds['settings']['s3_bucket']
 
-    sourcefile_to_s3(hashfile, source, 'hubbabd-crawler', s3_creds)
+    sourcefile_to_s3(hashfile, source, s3_bucket, s3_creds)
 
-    store_postgres("public.crawlerpages", [start_url, url, list(internal), list(external), hashfile, scraped_at],
+    store_postgres(sources_table, [start_url, url, list(internal), list(external), hashfile, scraped_at],
                    postgres_creds)
 
 def main(start_url):
@@ -143,7 +145,7 @@ if __name__ == '__main__':
     i = args.index
 
     if i is None:
-        start_url = 'http://www.fuschia.ie/'
+        start_url = 'http://www.epi-pet.com/'
         main(start_url)
     else:
         main_multiprocess(i)

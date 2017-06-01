@@ -43,7 +43,7 @@ def save_cachemap(start_url, url, filename):
     writer.writerow(row)
 
 
-def sync_from_postgres(start_url, creds, table="crawlerpages", bucket="hubbabd-crawler"):
+def sync_from_postgres(start_url, creds, table, bucket):
     s3_creds = creds['s3']
     postgres_creds = creds['postgres']
 
@@ -76,8 +76,10 @@ def check_cache(start_url=None):
 
 
 if __name__ == '__main__':
-    start_url = 'http://tomarket-tomarket.com/'
+    start_url = 'http://www.epi-pet.com/'
     creds = load_creds("credentials.json")
+    sources_table = creds['settings']['sources_table']
+    s3_bucket = creds['settings']['s3_bucket']
 
     try:
         t = check_cache(start_url)
@@ -89,6 +91,6 @@ if __name__ == '__main__':
     yn = input("resync " + start_url + "?(y/n)").lower()
 
     if yn == 'y':
-        sync_from_postgres(start_url, creds, table='crawlerpages', bucket='hubbabd-crawler')
+        sync_from_postgres(start_url, creds, table=sources_table, bucket=s3_bucket)
     else:
         print("sync not complete")
