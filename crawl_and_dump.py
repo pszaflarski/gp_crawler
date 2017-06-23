@@ -80,11 +80,14 @@ def store_data(start_url, url, internal, external, source, scraped_at, creds):
 
     s3_creds = creds['s3']
     postgres_creds = creds['postgres']
+    table = creds['postgres_path']
+    bucket = creds['s3_bucket']
 
-    sourcefile_to_s3(hashfile, source, 'hubbabd-crawler', s3_creds)
+    sourcefile_to_s3(hashfile, source, bucket, s3_creds)
 
-    store_postgres("public.crawlerpages", [start_url, url, list(internal), list(external), hashfile, scraped_at],
-                   postgres_creds)
+    l = [start_url, url, list(internal), list(external), hashfile, scraped_at]
+
+    store_postgres(table, l , postgres_creds)
 
 def main(start_url):
 

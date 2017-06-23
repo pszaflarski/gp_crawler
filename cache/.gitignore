@@ -1,5 +1,5 @@
-# Cache
-*.*
+#Cache files
+*
 
 # Windows image file caches
 Thumbs.db
@@ -8,7 +8,7 @@ ehthumbs.db
 # Folder config file
 Desktop.ini
 .idea
-__pychache__
+__pycache__
 
 # Recycle Bin used on file shares
 $RECYCLE.BIN/

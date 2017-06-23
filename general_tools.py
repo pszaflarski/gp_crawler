@@ -44,7 +44,7 @@ def to_number(s):
         return None
 
 
-def init_webdriver():
+def init_webdriver(headless = True):
     chromedriver = "chromedriver.exe"
     os.environ["webdriver.chrome.driver"] = chromedriver
 
@@ -58,7 +58,8 @@ def init_webdriver():
     chrome_options.add_argument("--disable-default-apps")
     chrome_options.add_argument("test-type=browser")
     chrome_options.add_argument("disable-infobars")
-
+    if headless:
+        chrome_options.add_argument("--headless")
     driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
 
     return driver

@@ -43,7 +43,7 @@ def save_cachemap(start_url, url, filename):
     writer.writerow(row)
 
 
-def sync_from_postgres(start_url, creds, table="crawlerpages", bucket="hubbabd-crawler"):
+def sync_from_postgres(start_url, creds, table, bucket):
     s3_creds = creds['s3']
     postgres_creds = creds['postgres']
 
@@ -89,6 +89,6 @@ if __name__ == '__main__':
     yn = input("resync " + start_url + "?(y/n)").lower()
 
     if yn == 'y':
-        sync_from_postgres(start_url, creds, table='crawlerpages', bucket='hubbabd-crawler')
+        sync_from_postgres(start_url, creds, table=creds['postgres_path'], bucket=creds['s3_bucket'])
     else:
         print("sync not complete")

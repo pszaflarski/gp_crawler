@@ -4,9 +4,6 @@ queue.csv
 # Password File
 credentials.json
 
-# chrome driver
-chromedriver.exe
-
 # Windows image file caches
 Thumbs.db
 ehthumbs.db

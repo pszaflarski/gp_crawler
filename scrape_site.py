@@ -74,7 +74,7 @@ if __name__ == '__main__':
     output_file = "output.csv"
     write_dict_to_csv(output_file, fieldnames, mode='w')
 
-    if len(rows) == 0: sync_from_postgres(start_url, creds)
+    if len(rows) == 0: sync_from_postgres(start_url, creds, creds['postgres_path'], creds['s3_bucket'])
 
     for row in rows:
         source = open("cache\\" + row[2], 'r', encoding='utf-8', errors='ignore').read()
