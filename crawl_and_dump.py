@@ -130,7 +130,7 @@ def main(start_url):
 
         if len(to_visit) == 0: break
 
-        print("to visit:", len(to_visit), ", visited:", visited_count)
+        print(start_url,"- to visit:", len(to_visit), ", visited:", visited_count)
     driver.quit()
 
 
