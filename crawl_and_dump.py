@@ -72,6 +72,7 @@ def sourcefile_to_s3(sourcefile_name, source, bucket, cred_dict):
     ob = s3.Object(bucket, sourcefile_name)
     ob.put(Body=bin_data)
 
+
 def store_data(start_url, url, internal, external, source, scraped_at, creds):
     hashfile = sha256(url.encode('utf-8')).hexdigest()
     # f = open(hashfile, 'w', encoding='utf-8', errors='ignore')
@@ -87,10 +88,10 @@ def store_data(start_url, url, internal, external, source, scraped_at, creds):
 
     l = [start_url, url, list(internal), list(external), hashfile, scraped_at]
 
-    store_postgres(table, l , postgres_creds)
+    store_postgres(table, l, postgres_creds)
+
 
 def main(start_url):
-
     driver = init_webdriver()
 
     visited = set()
@@ -132,11 +133,13 @@ def main(start_url):
         print("to visit:", len(to_visit), ", visited:", visited_count)
     driver.quit()
 
-def main_multiprocess(index, queue_csv = "queue.csv"):
-    reader = csv.reader(open(queue_csv,'r',encoding='utf-8', errors='ignore'))
+
+def main_multiprocess(index, queue_csv="queue.csv"):
+    reader = csv.reader(open(queue_csv, 'r', encoding='utf-8', errors='ignore'))
     i = int(index)
     start_url = [x[0] for x in reader][i]
     main(start_url)
+
 
 if __name__ == '__main__':
 

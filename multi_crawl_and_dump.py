@@ -3,18 +3,18 @@ import subprocess
 import csv
 import platform
 
+
 def start_crawl(arg):
-    if platform.system()=='Windows':
+    if platform.system() == 'Windows':
         cmd = 'python crawl_and_dump.py -index ' + str(arg)
-    elif platform.system()=='Linux':
+    elif platform.system() == 'Linux':
         cmd = 'sudo python crawl_and_dump.py -index ' + str(arg)
-    
+
     print(cmd)
-    return subprocess.call(cmd, shell=False)
+    return subprocess.call(cmd, shell=True)
 
 
-def start_multiprocess(l,num_workers =4, queue_csv = "queue.csv"):
-
+def start_multiprocess(l, num_workers=4, queue_csv="queue.csv"):
     out_row = [[x] for x in l]
     with open(queue_csv, 'w', encoding='utf-8', errors='ignore') as csvfile:
         writer = csv.writer(csvfile, lineterminator='\n')
@@ -28,10 +28,7 @@ def start_multiprocess(l,num_workers =4, queue_csv = "queue.csv"):
 
 
 if __name__ == '__main__':
-
     start_url_list = ['http://www.fuschia.ie/', 'http://www.fuschia.ie/', 'http://www.fuschia.ie/',
                       'http://www.fuschia.ie/', 'http://www.fuschia.ie/']
 
     start_multiprocess(start_url_list)
-
-

@@ -1,3 +1,10 @@
+import os
+import time
+import csv
+import json
+import datetime
+import platform
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -7,18 +14,9 @@ from selenium.webdriver.common.keys import Keys
 import selenium.common.exceptions as selenium_exceptions
 from selenium.webdriver.chrome.options import Options
 
-import os
-import time
-import csv
-import json
-import datetime
-import platform
-
 from lxml import html
 from lxml import etree
 from html import escape
-
-import pickle
 
 
 def driver_page_source_plus(driver):
@@ -45,8 +43,7 @@ def to_number(s):
         return None
 
 
-def init_webdriver(headless = True):
-
+def init_webdriver(headless=True):
     if platform.system() == 'Windows':
         chromedriver = "chromedriver.exe"
     elif platform.system() == 'Linux':
