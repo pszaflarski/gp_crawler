@@ -1,10 +1,14 @@
 import multiprocessing
 import subprocess
 import csv
-
+import platform
 
 def start_crawl(arg):
-    cmd = 'python crawl_and_dump.py -index ' + str(arg)
+    if platform.system()=='Windows':
+        cmd = 'python crawl_and_dump.py -index ' + str(arg)
+    elif platform.system()=='Linux':
+        cmd = 'sudo python crawl_and_dump.py -index ' + str(arg)
+    
     print(cmd)
     return subprocess.call(cmd, shell=False)
 

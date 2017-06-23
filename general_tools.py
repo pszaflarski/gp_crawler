@@ -12,6 +12,7 @@ import time
 import csv
 import json
 import datetime
+import platform
 
 from lxml import html
 from lxml import etree
@@ -45,7 +46,12 @@ def to_number(s):
 
 
 def init_webdriver(headless = True):
-    chromedriver = "chromedriver.exe"
+
+    if platform.system() == 'Windows':
+        chromedriver = "chromedriver.exe"
+    elif platform.system() == 'Linux':
+        chromedriver = "chromedriver"
+
     os.environ["webdriver.chrome.driver"] = chromedriver
 
     chrome_options = Options()
