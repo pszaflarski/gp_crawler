@@ -8,7 +8,7 @@ def start_crawl(arg):
     if platform.system() == 'Windows':
         cmd = 'python crawl_and_dump.py -index ' + str(arg)
     elif platform.system() == 'Linux':
-        cmd = 'sudo python crawl_and_dump.py -index ' + str(arg)
+        cmd = 'sudo python3 crawl_and_dump.py -index ' + str(arg)
 
     print(cmd)
     return subprocess.call(cmd, shell=True)
