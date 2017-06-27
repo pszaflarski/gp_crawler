@@ -58,6 +58,41 @@ def store_postgres(table, data, creds):
     conn.close()
 
 
+def check_resume_table(table, start_url, creds):
+    conn = psycopg2.connect(**creds)
+    cur = conn.cursor()
+
+    s = cur.mogrify("""
+        select * from {} where start_url = %s
+        """.format(table), [start_url])
+
+    cur.execute(s)
+    try:
+        results = cur.fetchall()[0][-2:]
+        results = [set(results[0]), set(results[1])]
+    except IndexError:
+        results = [set(), {start_url}]
+
+    return results
+
+
+def update_resume_table(table, data, creds):
+    conn = psycopg2.connect(**creds)
+    cur = conn.cursor()
+
+    data = data + data[1:]
+
+    s = cur.mogrify("""
+    insert into {} values (%s,%s,%s,%s,%s)
+    on conflict (start_url) do
+    update set (completed,received_at,visited,to_visit) = (%s,%s,%s,%s);
+    """.format(table), data)
+
+    cur.execute(s)
+    conn.commit()
+    conn.close()
+
+
 def sourcefile_to_s3(sourcefile_name, source, bucket, cred_dict):
     bin_data = source.encode('utf-8')
 
@@ -92,15 +127,20 @@ def store_data(start_url, url, internal, external, source, scraped_at, creds):
 
 
 def main(start_url):
+    creds = load_creds("credentials.json")
+    r = check_resume_table(creds["postgres_resume_path"], start_url, creds['postgres'])
+
+    visited = r[0]
+    to_visit = r[1]
+    visited_count = len(visited)
+
     driver = init_webdriver()
 
-    visited = set()
-    to_visit = {start_url}
-    visited_count = 0
-
-    creds = load_creds("credentials.json")
-
     while True:
+        # update the resume table with resume information
+        resume_list = [start_url, False, datetime.datetime.utcnow(), list(visited), list(to_visit)]
+        update_resume_table(creds["postgres_resume_path"], resume_list, creds['postgres'])
+
         next_url = to_visit.pop()
         visited.add(next_url)
         visited_count += 1
@@ -122,15 +162,16 @@ def main(start_url):
 
         to_visit.update(add_to_visit)
 
-        page_data = [next_url, internal, external, page_source]
-
-        l = [start_url, next_url, internal, external, page_source, datetime.datetime.utcnow()]
-
         store_data(start_url, next_url, internal, external, page_source, datetime.datetime.utcnow(), creds)
 
         if len(to_visit) == 0: break
 
-        print(start_url,"- to visit:", len(to_visit), ", visited:", visited_count)
+        print(start_url, "- to visit:", len(to_visit), ", visited:", visited_count)
+
+    # update the resume table with completed information
+    resume_list = [start_url, True, datetime.datetime.utcnow(), None, None]
+    update_resume_table(creds["postgres_resume_path"], resume_list, creds['postgres'])
+
     driver.quit()
 
 
@@ -142,6 +183,12 @@ def main_multiprocess(index, queue_csv="queue.csv"):
 
 
 if __name__ == '__main__':
+    # creds = load_creds("credentials.json")
+    # start_url = 'http://hubbarulez.com'
+    #
+    # r = check_resume_table(creds["postgres_resume_path"], start_url, creds['postgres'])
+    #
+    # print(r)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-index', action='store')

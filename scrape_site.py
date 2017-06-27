@@ -59,7 +59,7 @@ def scrape(tree, scrape_data):
 
 if __name__ == '__main__':
 
-    start_url = 'http://www.fuschia.ie/'
+    start_url = 'http://fenixcosmetics.com'
 
     creds = load_creds("credentials.json")
     reader = csv.reader(open("cache\\cachemap.csv"))

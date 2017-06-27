@@ -76,7 +76,7 @@ def check_cache(start_url=None):
 
 
 if __name__ == '__main__':
-    start_url = 'http://tomarket-tomarket.com/'
+    start_url = 'http://fenixcosmetics.com'
     creds = load_creds("credentials.json")
 
     try:
