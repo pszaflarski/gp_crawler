@@ -126,7 +126,7 @@ def store_data(start_url, url, internal, external, source, scraped_at, creds):
     store_postgres(table, l, postgres_creds)
 
 
-def main(start_url):
+def main(start_url, max_visited = 10000):
     creds = load_creds("credentials.json")
     r = check_resume_table(creds["postgres_resume_path"], start_url, creds['postgres'])
 
@@ -164,12 +164,17 @@ def main(start_url):
 
         store_data(start_url, next_url, internal, external, page_source, datetime.datetime.utcnow(), creds)
 
-        if len(to_visit) == 0: break
+        if len(to_visit) == 0 or (len(visited)>=max_visited and max_visited != -1):
+            break
 
         print(start_url, "- to visit:", len(to_visit), ", visited:", visited_count)
 
     # update the resume table with completed information
-    resume_list = [start_url, True, datetime.datetime.utcnow(), None, None]
+    if len(to_visit) == 0:
+        resume_list = [start_url, True, datetime.datetime.utcnow(), None, None]
+    else:
+        resume_list = [start_url, True, datetime.datetime.utcnow(), list(visited), list(to_visit)]
+
     update_resume_table(creds["postgres_resume_path"], resume_list, creds['postgres'])
 
     driver.quit()
