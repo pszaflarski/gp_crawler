@@ -3,12 +3,9 @@ import subprocess
 import time
 
 
-def start_crawl():
-    return subprocess.call('bash gpcrawler.sh', shell=True)
+def reset_crawl():
+    return subprocess.call('bash reset.sh', shell=True)
 
-
-def stop_crawl():
-    return subprocess.call('bash gpcrawler_kill.sh', shell=True)
 
 if __name__ == '__main__':
 
@@ -25,9 +22,7 @@ if __name__ == '__main__':
 
         if free < min_free or percent > max_percent:
             print("not enough free memory, stopping process and restarting...")
-            stop_crawl()
-            time.sleep(1)
-            print("restarting crawl")
-            start_crawl()
+            reset_crawl()
 
         time.sleep(wait_step)
+
