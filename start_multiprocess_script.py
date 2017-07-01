@@ -50,7 +50,7 @@ def get_websites(n = 10):
     pickle.dump(l1, open('temp.pkl', 'wb'))
     l1 = pickle.load(open('temp.pkl', 'rb'))
 
-    d = load_creds('postgres')
+    d = load_creds('credentials.json')['postgres']
 
     conn = psycopg2.connect(**d)
     cur = conn.cursor()
