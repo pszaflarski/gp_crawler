@@ -141,11 +141,19 @@ def main(start_url, max_visited = 10000):
         resume_list = [start_url, False, datetime.datetime.utcnow(), list(visited), list(to_visit)]
         update_resume_table(creds["postgres_resume_path"], resume_list, creds['postgres'])
 
-        next_url = to_visit.pop()
+        try:
+            next_url = to_visit.pop()
+        except KeyError:
+            break
+
         visited.add(next_url)
         visited_count += 1
 
-        driver.get(next_url)
+        try:
+            driver.get(next_url)
+        except Exception as e:
+            store_data(start_url, next_url, [], [], "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", datetime.datetime.utcnow(), creds)
+            continue
 
         current_url = driver.current_url
         visited.add(current_url)

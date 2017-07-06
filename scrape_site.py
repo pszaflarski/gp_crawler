@@ -1,5 +1,7 @@
 import csv
 import json
+import multiprocessing
+import re
 
 from general_tools import *
 from sync_cache import *
@@ -56,10 +58,42 @@ def scrape(tree, scrape_data):
 
     return output
 
+def scrape_one(args):
+    row = args[0]
+    url = row[1]
+    hashfile = row[2]
+
+    info = args[1]
+    scrape_trigger = info['scrape_trigger']
+    scrape_data =  info['scrape_data']
+    output_file = info['output_file']
+    fieldnames = info['fieldnames']
+    include_regex = info["include_regex"]
+    if info["exclude_regex"] is None:
+        exclude_regex = "a^"
+    else:
+        exclude_regex = info["exclude_regex"]
+
+    included = re.fullmatch(include_regex,url)
+    excluded = re.fullmatch(exclude_regex, url)
+
+    if not included or excluded:return
+
+    source = open("cache\\" + hashfile, 'r', encoding='utf-8', errors='ignore').read()
+    tree = etree_pipeline_fromstring(source)
+    triggered = detect_scrape(tree, scrape_trigger)
+    if triggered:
+        print("product found at:", url, end="==>")
+
+        output = scrape(tree, scrape_data)
+        output.update({"url": url})
+        write_dict_to_csv(output_file, fieldnames, d=output, mode='a')
+        print(output)
+
 
 if __name__ == '__main__':
 
-    start_url = 'http://fenixcosmetics.com'
+    start_url = 'http://chef5minutemeals.com'
 
     creds = load_creds("credentials.json")
     reader = csv.reader(open("cache\\cachemap.csv"))
@@ -69,21 +103,24 @@ if __name__ == '__main__':
 
     scrape_trigger = xpaths["trigger"]
     scrape_data = xpaths["scrape_data"]
+    include_regex = xpaths["include_regex"]
+    exclude_regex = xpaths["exclude_regex"]
 
     fieldnames = ["url"] + [x for x in scrape_data]
     output_file = "output.csv"
+
     write_dict_to_csv(output_file, fieldnames, mode='w')
 
     if len(rows) == 0: sync_from_postgres(start_url, creds, creds['postgres_path'], creds['s3_bucket'])
 
-    for row in rows:
-        source = open("cache\\" + row[2], 'r', encoding='utf-8', errors='ignore').read()
-        tree = etree_pipeline_fromstring(source)
-        triggered = detect_scrape(tree, scrape_trigger)
-        if triggered:
-            print("product found at:", row[1], end="==>")
+    args = [(x,{
+        'scrape_trigger':scrape_trigger,
+        'scrape_data':scrape_data,
+        'output_file':output_file,
+        'fieldnames':fieldnames,
+        'exclude_regex': exclude_regex,
+        'include_regex': include_regex
+    }) for x in rows]
 
-            output = scrape(tree, scrape_data)
-            output.update({"url": row[1]})
-            write_dict_to_csv(output_file, fieldnames, d=output, mode='a')
-            print(output)
+    pool = multiprocessing.Pool(processes=10)
+    pool.map(scrape_one, args)

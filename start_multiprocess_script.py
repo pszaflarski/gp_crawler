@@ -70,13 +70,13 @@ if __name__ == '__main__':
 
     while True:
         try:
-            websites = get_websites(n = 20)
+            websites = get_websites(n = 100)
 
             if len(websites) == 0:break
 
             print("sites in queue:",", ".join(websites))
 
-            start_multiprocess(websites, num_workers=4)
+            start_multiprocess(websites, num_workers=50)
         except:
             continue
 

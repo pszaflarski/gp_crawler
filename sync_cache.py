@@ -1,5 +1,6 @@
 import csv
 import json
+import multiprocessing
 
 from general_tools import *
 
@@ -43,22 +44,35 @@ def save_cachemap(start_url, url, filename):
     writer.writerow(row)
 
 
-def sync_from_postgres(start_url, creds, table, bucket):
-    s3_creds = creds['s3']
+def _sync_one(result_info):
+    result = result_info[0]
+    sourcefile_name = result[-2]
+    url = result[1]
+
+    info = result_info[1]
+    start_url = info['start_url']
+    bucket = info['bucket']
+    s3_creds = info['creds']['s3']
+
+    source = get_source_from_s3(sourcefile_name, bucket, s3_creds)
+
+    save_source_file(sourcefile_name, source)
+
+    save_cachemap(start_url, url, sourcefile_name)
+
+    print(url)
+
+
+def sync_from_postgres(start_url, creds, table, bucket, workers=10):
     postgres_creds = creds['postgres']
 
     l = find_scraped_pages(table, start_url, postgres_creds)
-    for result in l:
-        sourcefile_name = result[-2]
-        url = result[1]
 
-        source = get_source_from_s3(sourcefile_name, bucket, s3_creds)
+    result_infos = [(x, {'start_url': start_url, 'creds': creds, 'bucket': bucket}) for x in l]
 
-        save_source_file(sourcefile_name, source)
+    pool = multiprocessing.Pool(processes=workers)
 
-        save_cachemap(start_url, url, sourcefile_name)
-
-        print(url)
+    pool.map(_sync_one, result_infos)
 
 
 def check_cache(start_url=None):
@@ -76,7 +90,7 @@ def check_cache(start_url=None):
 
 
 if __name__ == '__main__':
-    start_url = 'http://fenixcosmetics.com'
+    start_url = 'http://chef5minutemeals.com'
     creds = load_creds("credentials.json")
 
     try:
@@ -89,6 +103,6 @@ if __name__ == '__main__':
     yn = input("resync " + start_url + "?(y/n)").lower()
 
     if yn == 'y':
-        sync_from_postgres(start_url, creds, table=creds['postgres_path'], bucket=creds['s3_bucket'])
+        sync_from_postgres(start_url, creds, table=creds['postgres_path'], bucket=creds['s3_bucket'], workers=10)
     else:
         print("sync not complete")

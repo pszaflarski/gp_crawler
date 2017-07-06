@@ -28,7 +28,5 @@ def start_multiprocess(l, num_workers=4, queue_csv="queue.csv"):
 
 
 if __name__ == '__main__':
-    start_url_list = ['http://www.fuschia.ie/', 'http://www.fuschia.ie/', 'http://www.fuschia.ie/',
-                      'http://www.fuschia.ie/', 'http://www.fuschia.ie/']
-
-    start_multiprocess(start_url_list)
+    start_url_list = ['http://chef5minutemeals.com', 'http://slapyamama.com']
+    start_multiprocess(start_url_list, num_workers = 2)
