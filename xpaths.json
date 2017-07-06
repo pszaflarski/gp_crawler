@@ -1,18 +1,15 @@
 {
-  "trigger": "//*[@id='product-price']",
+  "exclude_regex": null,
+  "include_regex": "http.*",
+  "trigger": "//p[@class='price']",
   "scrape_data": {
     "price": {
-      "xpath": "//*[@id='product-price']",
+      "xpath": "//p[@class='price']",
       "multiple": false,
       "format": "text"
     },
-    "description": {
-      "xpath": "//*[@id='product-desc']",
-      "multiple": false,
-      "format": "html"
-    },
     "name": {
-      "xpath": "//*[@id='product-name']",
+      "xpath": "//h1[@class='product-title']",
       "multiple": false,
       "format": "text"
     },
