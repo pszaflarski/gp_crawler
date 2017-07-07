@@ -4,6 +4,7 @@ import csv
 import json
 import datetime
 import platform
+import subprocess
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -47,6 +48,7 @@ def init_webdriver(headless=True):
     if platform.system() == 'Windows':
         chromedriver = "chromedriver.exe"
     elif platform.system() == 'Linux':
+        subprocess.call('sudo chmod +x ./chromedriver', shell=True)
         chromedriver = "./chromedriver"
 
     os.environ["webdriver.chrome.driver"] = chromedriver
