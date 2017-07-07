@@ -47,7 +47,7 @@ def init_webdriver(headless=True):
     if platform.system() == 'Windows':
         chromedriver = "chromedriver.exe"
     elif platform.system() == 'Linux':
-        chromedriver = "chromedriver"
+        chromedriver = "./chromedriver"
 
     os.environ["webdriver.chrome.driver"] = chromedriver
 
