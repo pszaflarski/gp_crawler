@@ -10,35 +10,37 @@ def get_websites(n = 10):
 
     sql = """
         select
-        accountid,
-        website,
-        min(
-            case
-                when salesloftstage__c = '0308 Closed - Won' then 1
-                when salesloftstage__c = '0303 Selling - Pitch Booked' then 2
-                when salesloftstage__c = '0304 Selling - Pitched' then 3
-                when salesloftstage__c = '0302 Selling - Qualified' then 4
-                when salesloftstage__c = '0301 Prospecting - Active' then 5
-                when salesloftstage__c = '0310 Closed - Lapsed' then 5
-                when salesloftstage__c = '0309 Closed - Timeline' then 6
-                when salesloftstage__c = '0311 Prospecting - No Response' then 7
-                when salesloftstage__c = '0305 Closed - Wrong Person' then 8
-                when salesloftstage__c = '0306 Closed - Disqualified' then 8
-                when salesloftstage__c = '0307 Closed - Lost' then 8
-                when salesloftstage__c is null or salesloftstage__c = '' then 5
-                else 5
-            end
-        ) priority
-        from
-            salesforce.sf_contact sfc
-        left join
-            salesforce.sf_account sfa
-        on
-            accountid = sfa.id
-        group by
-            1,2
-        order by
-            3
+          accountid,
+          website,
+          min(datediff(day,salesloft_stagesetat__c,getdate())) setat,
+          min(
+              case
+                  when salesloftstage__c = '0308 Closed - Won' and datediff(day,salesloft_stagesetat__c,getdate()) <= 14 then 0
+                  when salesloftstage__c = '0308 Closed - Won' and datediff(day,salesloft_stagesetat__c,getdate()) > 14 then 1
+                  when salesloftstage__c = '0303 Selling - Pitch Booked' then 2
+                  when salesloftstage__c = '0304 Selling - Pitched' then 3
+                  when salesloftstage__c = '0302 Selling - Qualified' then 4
+                  when salesloftstage__c = '0301 Prospecting - Active' then 5
+                  when salesloftstage__c = '0310 Closed - Lapsed' then 5
+                  when salesloftstage__c = '0309 Closed - Timeline' then 6
+                  when salesloftstage__c = '0311 Prospecting - No Response' then 7
+                  when salesloftstage__c = '0305 Closed - Wrong Person' then 8
+                  when salesloftstage__c = '0306 Closed - Disqualified' then 8
+                  when salesloftstage__c = '0307 Closed - Lost' then 8
+                  when salesloftstage__c is null or salesloftstage__c = '' then 5
+                  else 5
+              end
+          ) priority
+          from
+              salesforce.sf_contact sfc
+          left join
+              salesforce.sf_account sfa
+          on
+              accountid = sfa.id
+          group by
+              1,2
+          order by
+              4
         """
 
     conn = psycopg2.connect(**d)
