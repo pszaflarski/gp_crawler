@@ -16,25 +16,10 @@ def find_scraped_pages(table, start_url, creds):
 
     return cur.fetchall()
 
-
-def get_source_from_s3(sourcefile_name, bucket, cred_dict):
-    aws_access_key_id = cred_dict['aws_access_key_id']
-    aws_secret_access_key = cred_dict['aws_secret_access_key']
-
-    s3 = boto3.resource(
-        's3',
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key
-    )
-    ob = s3.Object(bucket, sourcefile_name)
-    return ob.get()["Body"].read().decode('utf-8')
-
-
 def save_source_file(filename, source):
     f = open("cache\\" + filename, 'w', encoding='utf-8', errors='ignore')
     f.write(source)
     f.close()
-
 
 def save_cachemap(start_url, url, filename):
     writer = csv.writer(open('cache\\cachemap.csv', 'a', encoding='utf-8', errors='ignore'), lineterminator='\n')
@@ -54,7 +39,7 @@ def _sync_one(result_info):
     bucket = info['bucket']
     s3_creds = info['creds']['s3']
 
-    source = get_source_from_s3(sourcefile_name, bucket, s3_creds)
+    source = get_from_s3(sourcefile_name, bucket, s3_creds)
 
     save_source_file(sourcefile_name, source)
 

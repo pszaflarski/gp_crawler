@@ -19,6 +19,8 @@ from lxml import html
 from lxml import etree
 from html import escape
 
+import boto3
+
 
 def driver_page_source_plus(driver):
     try:
@@ -68,6 +70,45 @@ def init_webdriver(headless=True):
     driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
 
     return driver
+
+
+def get_from_s3(sourcefile_name, bucket, cred_dict):
+    aws_access_key_id = cred_dict['aws_access_key_id']
+    aws_secret_access_key = cred_dict['aws_secret_access_key']
+
+    s3 = boto3.resource(
+        's3',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key
+    )
+    ob = s3.Object(bucket, sourcefile_name)
+    return ob.get()["Body"].read().decode('utf-8')
+
+
+def file_to_s3(filename, file_data, bucket, cred_dict):
+    aws_access_key_id = cred_dict['aws_access_key_id']
+    aws_secret_access_key = cred_dict['aws_secret_access_key']
+
+    s3 = boto3.resource(
+        's3',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key
+    )
+    ob = s3.Object(bucket, filename)
+    return ob.put(Body=file_data)
+
+
+def delete_s3_file(filename, bucket, cred_dict):
+    aws_access_key_id = cred_dict['aws_access_key_id']
+    aws_secret_access_key = cred_dict['aws_secret_access_key']
+
+    s3 = boto3.resource(
+        's3',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key
+    )
+    ob = s3.Object(bucket, filename)
+    return ob.delete()
 
 
 def load_creds(filename):
