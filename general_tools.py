@@ -21,6 +21,7 @@ from html import escape
 
 import boto3
 
+from openpyxl import Workbook
 
 def driver_page_source_plus(driver):
     try:
@@ -171,6 +172,18 @@ def write_dict_to_csv(filename, fieldnames, d=None, mode='a'):
                                 fieldnames=fieldnames)
         writer.writerow(d)
         f.close()
+
+def csv_to_xl(csv_file_source, xlsx_filename, encoding = 'utf-8'):
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet()
+
+    with open(csv_file_source, 'r', encoding=encoding, errors='ignore') as csv_file:
+        reader = csv.reader(csv_file)
+        for row in reader:
+            ws.append(row)
+
+    wb.save(xlsx_filename)
+
 
 
 if __name__ == '__main__':

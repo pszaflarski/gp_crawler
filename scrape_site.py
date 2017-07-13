@@ -36,7 +36,6 @@ def element_to_html(e, attribute):
 def element_to_attribute(e, attribute):
     return e.get(attribute)
 
-
 def scrape(tree, scrape_data):
     output = {x: None for x in scrape_data}
 
@@ -70,6 +69,7 @@ def scrape(tree, scrape_data):
 
 
 def scrape_one(args):
+
     row = args[0]
     url = row[1]
     hashfile = row[2]
@@ -77,7 +77,7 @@ def scrape_one(args):
     info = args[1]
     scrape_trigger = info['scrape_trigger']
     scrape_data = info['scrape_data']
-    output_file = info['output_file']
+    output_file = './cache/'+str(multiprocessing.current_process().pid)
     fieldnames = info['fieldnames']
     include_regex = info["include_regex"]
     if info["exclude_regex"] is None:
@@ -90,25 +90,26 @@ def scrape_one(args):
 
     if not included or excluded: return
 
-    source = open("cache\\" + hashfile, 'r', encoding='utf-8', errors='ignore').read()
+    source = open("./cache/" + hashfile, 'r', encoding='utf-8', errors='ignore').read()
     tree = etree_pipeline_fromstring(source)
     triggered = detect_scrape(tree, scrape_trigger)
     if triggered:
         print("product found at:", url, end="==>")
-
         output = scrape(tree, scrape_data)
         output.update({"url": url})
         write_dict_to_csv(output_file, fieldnames, d=output, mode='a')
         print(output)
+        r = multiprocessing.current_process().pid
+        return r
 
 
 if __name__ == '__main__':
 
-    start_url = 'https://tester'
+    start_url = 'https://soredgear.com/'
 
     creds = load_creds("credentials.json")
     reader = csv.reader(open("cache\\cachemap.csv"))
-    rows = [x for x in reader if x[0] == start_url]
+    rows = [x for x in reader if x[0:1] == [start_url]]
 
     xpaths = json.load(open("xpaths.json", 'r', encoding='utf-8', errors='ignore'))
 
@@ -122,7 +123,8 @@ if __name__ == '__main__':
 
     write_dict_to_csv(output_file, fieldnames, mode='w')
 
-    if len(rows) == 0: sync_from_postgres(start_url, creds, creds['postgres_path'], creds['s3_bucket'])
+    if len(rows) == 0:
+        sync_from_postgres(start_url, creds, creds['postgres_path'], creds['s3_bucket'])
 
     args = [(x, {
         'scrape_trigger': scrape_trigger,
@@ -134,4 +136,18 @@ if __name__ == '__main__':
     }) for x in rows]
 
     pool = multiprocessing.Pool(processes=10)
-    pool.map(scrape_one, args)
+    l = pool.map(scrape_one, args)
+    c = 0
+    process_files = set(['./cache/'+str(x) for x in l if x])
+    for file in process_files:
+        with open(file, 'r', encoding='utf-8', errors='ignore') as csvfile:
+            reader = csv.reader(csvfile)
+
+            for row in reader:
+                c+=1
+                d = {fieldname:row[i] for i, fieldname in enumerate(fieldnames)}
+                write_dict_to_csv(output_file, fieldnames, d=d, mode='a')
+
+        os.remove(file)
+
+    csv_to_xl(output_file,output_file.replace('.csv', '.xlsx'))
