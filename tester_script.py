@@ -193,9 +193,8 @@ def main_multiprocess(index, queue_csv="queue.csv"):
 
 
 if __name__ == '__main__':
-    test_page = 'http://www.google.com'
-    xpath = '//html'
-    fmt = 'html:outer'
+    test_page = 'http://www.hubba.com'
+    xpath = '/*'
 
     print('testing webdriver')
     driver = init_webdriver()
@@ -210,12 +209,17 @@ if __name__ == '__main__':
     etree = etree_pipeline_fromstring(source)
 
     print('got an etree, attempting to find an xpath:',xpath)
-    element = etree.xpath(xpath)
+    try:
+        element = etree.xpath(xpath)[0]
+        print('retreiving element text')
+        from scrape_site import *
 
-    print('retreiving element:', fmt)
-    from scrape_site import *
-    s = element_to_html(element, fmt)
-    print(s)
+        s = element_to_text(element, None)
+        print(s)
+    except IndexError:
+        print('error getting element')
+
+
     print('closing driver')
     driver.close()
     print("all done, everything looks fine to me, have a nice day")
