@@ -234,7 +234,6 @@ def main(start_url, max_visited=-1, parameters_set=None, high_priority=True):
             break
 
         print(start_url, "- high priority to visit:", len(to_visit), "- low priority to visit:", len(to_visit_lp), ", visited:", visited_count)
-        print(to_visit)
 
     # update the resume table with completed information
     if len(to_visit) + len(to_visit_lp) == 0:
