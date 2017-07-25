@@ -1,7 +1,0 @@
-selenium
-lxml
-psycopg2
-boto3
-psutil
-libtmux
-openpyxl

@@ -4,7 +4,6 @@ import csv
 import json
 import datetime
 import platform
-import subprocess
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -19,9 +18,6 @@ from lxml import html
 from lxml import etree
 from html import escape
 
-import boto3
-
-from openpyxl import Workbook
 
 def driver_page_source_plus(driver):
     try:
@@ -51,8 +47,7 @@ def init_webdriver(headless=True):
     if platform.system() == 'Windows':
         chromedriver = "chromedriver.exe"
     elif platform.system() == 'Linux':
-        subprocess.call('sudo chmod +x ./chromedriver', shell=True)
-        chromedriver = "./chromedriver"
+        chromedriver = "chromedriver"
 
     os.environ["webdriver.chrome.driver"] = chromedriver
 
@@ -71,45 +66,6 @@ def init_webdriver(headless=True):
     driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
 
     return driver
-
-
-def get_from_s3(sourcefile_name, bucket, cred_dict):
-    aws_access_key_id = cred_dict['aws_access_key_id']
-    aws_secret_access_key = cred_dict['aws_secret_access_key']
-
-    s3 = boto3.resource(
-        's3',
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key
-    )
-    ob = s3.Object(bucket, sourcefile_name)
-    return ob.get()["Body"].read().decode('utf-8')
-
-
-def file_to_s3(filename, file_data, bucket, cred_dict):
-    aws_access_key_id = cred_dict['aws_access_key_id']
-    aws_secret_access_key = cred_dict['aws_secret_access_key']
-
-    s3 = boto3.resource(
-        's3',
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key
-    )
-    ob = s3.Object(bucket, filename)
-    return ob.put(Body=file_data)
-
-
-def delete_s3_file(filename, bucket, cred_dict):
-    aws_access_key_id = cred_dict['aws_access_key_id']
-    aws_secret_access_key = cred_dict['aws_secret_access_key']
-
-    s3 = boto3.resource(
-        's3',
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key
-    )
-    ob = s3.Object(bucket, filename)
-    return ob.delete()
 
 
 def load_creds(filename):
@@ -172,18 +128,6 @@ def write_dict_to_csv(filename, fieldnames, d=None, mode='a'):
                                 fieldnames=fieldnames)
         writer.writerow(d)
         f.close()
-
-def csv_to_xl(csv_file_source, xlsx_filename, encoding = 'utf-8'):
-    wb = Workbook(write_only=True)
-    ws = wb.create_sheet()
-
-    with open(csv_file_source, 'r', encoding=encoding, errors='ignore') as csv_file:
-        reader = csv.reader(csv_file)
-        for row in reader:
-            ws.append(row)
-
-    wb.save(xlsx_filename)
-
 
 
 if __name__ == '__main__':

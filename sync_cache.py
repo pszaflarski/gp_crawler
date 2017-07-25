@@ -16,10 +16,12 @@ def find_scraped_pages(table, start_url, creds):
 
     return cur.fetchall()
 
+
 def save_source_file(filename, source):
     f = open("cache\\" + filename, 'w', encoding='utf-8', errors='ignore')
     f.write(source)
     f.close()
+
 
 def save_cachemap(start_url, url, filename):
     writer = csv.writer(open('cache\\cachemap.csv', 'a', encoding='utf-8', errors='ignore'), lineterminator='\n')
@@ -66,6 +68,8 @@ def check_cache(start_url=None):
     cached_at_list = []
 
     for row in reader:
+        if len(row) == 0:
+            continue
         if row[0] == start_url or start_url is None:
             now = datetime.datetime.utcnow()
             cached_at = datetime.datetime.strptime(row[-1], "%Y-%m-%d %H:%M:%S.%f")
