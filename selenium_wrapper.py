@@ -5,6 +5,8 @@ without needing to call any of the other modules in this project
 
 """
 
+import selenium_wrapper
+
 
 class Crawler:
     def __init__(self):
