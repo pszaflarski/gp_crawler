@@ -23,11 +23,11 @@ import boto3
 
 from openpyxl import Workbook
 
-def get(driver, url, retries = 3):
 
+def get(driver, url, tries=1):
     if driver is None: driver = init_webdriver()
 
-    for i in range(retries):
+    for i in range(tries):
         try:
             driver.get(url)
             break
@@ -39,12 +39,14 @@ def get(driver, url, retries = 3):
 
     return driver
 
+
 def page_source(driver):
     try:
         a = driver.find_elements_by_xpath('/*')
         return '\n'.join([x.get_attribute('outerHTML') for x in a])
     except:
         return driver.page_source
+
 
 def to_number(s):
     try:
@@ -188,7 +190,8 @@ def write_dict_to_csv(filename, fieldnames, d=None, mode='a'):
         writer.writerow(d)
         f.close()
 
-def csv_to_xl(csv_file_source, xlsx_filename, encoding = 'utf-8'):
+
+def csv_to_xl(csv_file_source, xlsx_filename, encoding='utf-8'):
     wb = Workbook(write_only=True)
     ws = wb.create_sheet()
 
@@ -198,7 +201,6 @@ def csv_to_xl(csv_file_source, xlsx_filename, encoding = 'utf-8'):
             ws.append(row)
 
     wb.save(xlsx_filename)
-
 
 
 if __name__ == '__main__':
