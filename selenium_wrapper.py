@@ -24,7 +24,7 @@ import boto3
 from openpyxl import Workbook
 
 
-def get(driver, url, tries=1):
+def urlget(driver, url, tries=1):
     if driver is None: driver = init_webdriver()
 
     for i in range(tries):

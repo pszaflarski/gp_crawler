@@ -1,9 +1,3 @@
-"""
-The plan is to make this module and object a container for all the variables in this project.
-Once finished, a user should be able to just use this module to do all their crawling and scraping
-without needing to call any of the other modules in this project
-
-"""
 
 from selenium_wrapper import *
 
@@ -43,7 +37,7 @@ def is_internal(base_url, url):
         p = urlparse(url)
 
         netloc_equal_condition = urlparse(base_url).netloc == p.netloc
-        no_scheme_condition = p.scheme == ''
+        no_scheme_condition = p.scheme == '' and '.' not in p.netloc
 
         is_internal = netloc_equal_condition or no_scheme_condition
     except:
@@ -55,18 +49,21 @@ def is_internal(base_url, url):
 class Crawler:
     def __init__(self):
         self.driver = None
+        self.base_url_format = "{scheme}://{netloc}"
+        self.base_url_path_format = "{scheme}://{netloc}{path}"
 
     def crawl_one(self, page, start_url=None):
         """
         :param page: page to scrape
         :param start_url: if this is provided, it will classify all links not part of start_url as external
-        :return: a dictionary with:
+        :return: a dictionary with: {
             'internal': internal links
             'non_http': links that do not follow the http or https scheme
             'external': external links
             'page_source': the source for the page
             'url': the url that the page ended up at after it finished loading
             'exception': None if everything is OK, otherwise returns the exception
+            }
         """
 
         # initialize values for error catching
@@ -82,7 +79,7 @@ class Crawler:
                 p = urlparse(page)
                 start_url = "{scheme}://{netloc}".format(scheme=p.scheme, netloc=p.netloc)
 
-            self.driver = get(self.driver, page)
+            self.driver = urlget(self.driver, page)
 
             source = page_source(self.driver)
 
@@ -117,7 +114,42 @@ class Crawler:
 
         return out_dict
 
-    def crawl_site(self, start_url, resume=True, prioritize=True, max_site_size=20000):
+    def _organize_pd(self, url, pd, reorg=True):
+
+        pd['visited'].add(url)
+
+        p = urlparse(url)
+        base_url_path = self.base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path)
+
+        # add the base path to the low priority list if it hasn't already been visited
+        if base_url_path != url and base_url_path not in pd['visited']:
+            pd['to_visit_low_priority'].add(base_url_path)
+
+        to_visit_lp_out = pd['to_visit_low_priority']
+
+        # this will reorganize all 'to_visit' sites based on new information
+        # if this is too process intensive, set reorg to False
+        if reorg:
+            to_visit_out = set()
+            for to_visit_url in pd['to_visit']:
+                p = urlparse(to_visit_url)
+                if base_url_path == self.base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path):
+                    to_visit_lp_out.add(to_visit_url)
+                else:
+                    to_visit_out.add(to_visit_url)
+        else:
+            to_visit_out = pd['to_visit']
+
+        # this might be "dangerous" since we're swapping out things from a dictionary
+        pd = {
+            'to_visit': to_visit_out,
+            'to_visit_low_priority': to_visit_lp_out,
+            'visited': pd['visited']
+        }
+
+        return pd
+
+    def crawl_site(self, start_url, resume=True, prioritize=True, max_site_size=20000, silent=False):
         """
         :param start_url: a valid address to a website
         :param resume: if True, it will attempt to resume from previously saved progress
@@ -126,11 +158,9 @@ class Crawler:
             if 'google.com' has already been crawled, then 'google.com/?q=help' will be deprioritized
         :param max_site_size: limit for number of pages to crawl in a site, default is 20000, if it's -1, the crawler will
             not stop crawling until there are no pages left to crawl
+        :param silent: if True, crawler will not print progress to screen as it crawls
         :return: Nothing
         """
-
-        base_url_format = "{scheme}://{netloc}"
-        base_url_path_format = "{scheme}://{netloc}{path}"
 
         if resume:
             pd = self._load_progress(start_url)
@@ -156,17 +186,9 @@ class Crawler:
             resume_output = {x: list(y) for x, y in pd.items()}
             self._save_progress(resume_output)
 
-            p = urlparse(url)
-            base_url_path = base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path)
-
-            pd['visited'].add(url)
-
-            # add the base path to the low priority list if it hasn't already been visited
-            if base_url_path != url and base_url_path not in pd['visited']:
-                pd['to_visit_low_priority'].add(base_url_path)
-
+            pd = self._organize_pd(url, pd)
             r = self.crawl_one(url)
-            if r.get('exception') is None:
+            if r.get('exception') is not None:
                 page_output = {
                     'internal': r.get('internal'),
                     'non_http': r.get('non_http'),
@@ -175,18 +197,12 @@ class Crawler:
                     'url': url,
                     'start_url': start_url
                 }
-
-
+                self._save_page_data(page_output)
+                continue
 
             # handle redirected urls
             redir_url = r['url']
-            pd['visited'].add(redir_url)
-            pr = urlparse(redir_url)
-            redir_url_base_path = base_url_path_format.format(scheme=pr.scheme, netloc=pr.netloc, path=pr.path)
-
-            # add the base path for the redirected link to the low priority list if it hasn't already been visited
-            if redir_url_base_path != redir_url and redir_url_base_path not in pd['visited']:
-                pd['to_visit_low_priority'].add(redir_url_base_path)
+            pd = self._organize_pd(redir_url, pd)
 
             # convert all internal links to absolute
             internal = [urljoin(url, x) for x in r['internal']]
@@ -216,6 +232,17 @@ class Crawler:
                 'url': url,
                 'start_url': start_url
             }
+            self._save_page_data(page_output)
+
+            if not silent:
+                p = urlparse(url)
+                base_url_path = self.base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path)
+                print(start_url, {True:base_url_path,False:url}[prioritize], {x: len(y) for x, y in pd.items()})
+
+    def _save_page_data(self, page_data):
+
+        success = True
+        return success
 
     def _save_progress(self, resume_data):
         pass
@@ -240,10 +267,3 @@ if __name__ == '__main__':
     c = Crawler()
 
     d = c.crawl_site('https://soredgear.com/')
-
-    e = 'mailto://pjacob@hubba.com'
-    u = 'https://soredgear.com/'
-
-    j = urljoin(u, e)
-
-    print(j)
