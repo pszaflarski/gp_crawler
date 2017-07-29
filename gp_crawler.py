@@ -1,5 +1,6 @@
 
 from selenium_wrapper import *
+from db_connector import *
 
 from urllib.parse import urljoin
 from urllib.parse import urlparse
@@ -47,10 +48,14 @@ def is_internal(base_url, url):
 
 
 class Crawler:
-    def __init__(self):
+    def __init__(self, db_connection = 'sqlite:///crawler.db', file_path = './cache/'):
         self.driver = None
         self.base_url_format = "{scheme}://{netloc}"
         self.base_url_path_format = "{scheme}://{netloc}{path}"
+
+        self.dbc = CrawlerDataConnector(db_connection, file_path)
+
+
 
     def crawl_one(self, page, start_url=None):
         """
@@ -195,7 +200,8 @@ class Crawler:
                     'external': r.get('external'),
                     'page_source': r.get('page_source'),
                     'url': url,
-                    'start_url': start_url
+                    'start_url': start_url,
+                    'exception': r.get('exception')
                 }
                 self._save_page_data(page_output)
                 continue
@@ -228,10 +234,13 @@ class Crawler:
                 'internal': internal,
                 'non_http': r.get('non_http'),
                 'external': r.get('external'),
-                'page_source': r.get('page_source'),
+                'page_source': '5',#r.get('page_source'),
                 'url': url,
-                'start_url': start_url
+                'start_url': start_url,
+                'exception': None
             }
+            print(page_output)
+
             self._save_page_data(page_output)
 
             if not silent:
