@@ -7,58 +7,21 @@ import pickle
 from hashlib import sha256
 from os import path
 
-
-def get_links(tree, current_url):
-    e = tree.xpath("//*/@href")
-
-    links_on_page = set(rel_to_abs_l(current_url, [x for x in e]))
-
-    e = tree.xpath("//*/@src")
-
-    links_on_page.update(set(rel_to_abs_l(current_url, [x for x in e])))
-
-    return links_on_page
+import sqlalchemy
 
 
-def rel_to_abs_l(base_url, l):
-    abs_links = []
-    for link in l:
-        if is_relative(link):
-            abs_links.append(urljoin(base_url, link))
-        else:
-            abs_links.append(link)
+from sqlalchemy.dialects import postgresql
 
-    return abs_links
-
-
-def is_relative(url):
-    return ':' not in url
-
-
-def is_internal(base_url, url):
-    try:
-        p = urlparse(url)
-
-        netloc_equal_condition = urlparse(base_url).netloc == p.netloc
-        no_scheme_condition = p.scheme == '' and '.' not in p.netloc
-
-        is_internal = netloc_equal_condition or no_scheme_condition
-    except:
-        is_internal = False
-
-    return is_internal
 
 
 class Crawler:
-    def __init__(self, db_connection='sqlite:///crawler.db', file_path='./cache/'):
+    def __init__(self, file_path='./cache/', in_memory=False):
         self.driver = None
         self.base_url_format = "{scheme}://{netloc}"
         self.base_url_path_format = "{scheme}://{netloc}{path}"
 
-        self.db_connection = db_connection
         self.file_path = file_path
-
-        self.dbc = CrawlerDataConnector(db_connection, file_path)
+        self.in_memory = in_memory
 
     def crawl_one(self, page, start_url=None):
         """
@@ -94,9 +57,9 @@ class Crawler:
             tree = etree_pipeline_fromstring(source)
 
             current_url = self.driver.current_url
-            links = get_links(tree, current_url)
+            links = self._get_links(tree)
 
-            external = {x for x in links if not is_internal(start_url, x)}
+            external = {x for x in links if not self._is_internal(start_url, x)}
             internal = {x for x in links if x not in external}
 
             non_http = {x for x in internal if urlparse(x).scheme not in {'http', 'https', ''}}
@@ -121,44 +84,6 @@ class Crawler:
             }
 
         return out_dict
-
-    def _organize_pd(self, url, pd, reorg=True):
-
-        start_url = pd.get('start_url')
-
-        pd['visited'].add(url)
-
-        p = urlparse(url)
-        base_url_path = self.base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path)
-
-        # add the base path to the low priority list if it hasn't already been visited
-        if base_url_path != url and base_url_path not in pd['visited']:
-            pd['to_visit_low_priority'].add(base_url_path)
-
-        to_visit_lp_out = pd['to_visit_low_priority']
-
-        # this will reorganize all 'to_visit' sites based on new information
-        # if this is too process intensive, set reorg to False
-        if reorg:
-            to_visit_out = set()
-            for to_visit_url in pd['to_visit']:
-                p = urlparse(to_visit_url)
-                if base_url_path == self.base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path):
-                    to_visit_lp_out.add(to_visit_url)
-                else:
-                    to_visit_out.add(to_visit_url)
-        else:
-            to_visit_out = pd['to_visit']
-
-        # this might be "dangerous" since we're swapping out things from a dictionary
-        pd = {
-            'start_url': start_url,
-            'to_visit': to_visit_out,
-            'to_visit_low_priority': to_visit_lp_out,
-            'visited': pd['visited']
-        }
-
-        return pd
 
     def crawl_site(self, start_url, resume=True, resume_from=None, prioritize=True, max_site_size=20000, silent=False):
         """
@@ -260,6 +185,84 @@ class Crawler:
         if not silent:
             print('All Done!')
 
+    def _get_links(self, tree):
+        e = tree.xpath("//*/@href")
+
+        links_on_page = set([x for x in e])
+
+        e = tree.xpath("//*/@src")
+
+        links_on_page.update(set([x for x in e]))
+
+        return links_on_page
+
+    def _is_internal(self, base_url, url):
+        try:
+            p = urlparse(url)
+
+            netloc_equal_condition = urlparse(base_url).netloc == p.netloc
+            no_scheme_condition = p.scheme == '' and '.' not in p.netloc
+
+            is_internal = netloc_equal_condition or no_scheme_condition
+        except:
+            is_internal = False
+
+        return is_internal
+
+    def _load_progress(self, start_url):
+
+        try:
+            filename = path.join(self.file_path, sha256(start_url.encode('utf-8')).hexdigest() + '_progress.pkl')
+            with open(filename, 'rb') as picklefile:
+                resume_data = pickle.load(picklefile)
+        except:
+            resume_data = {
+                'start_url': start_url,
+                'to_visit': {start_url},
+                'to_visit_low_priority': set(),
+                'visited': set()
+            }
+
+        return resume_data
+
+    def _organize_pd(self, url, pd, reorg=True):
+
+        start_url = pd.get('start_url')
+
+        pd['visited'].add(url)
+
+        p = urlparse(url)
+        base_url_path = self.base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path)
+
+        # add the base path to the low priority list if it hasn't already been visited
+        if base_url_path != url and base_url_path not in pd['visited']:
+            pd['to_visit_low_priority'].add(base_url_path)
+
+        to_visit_lp_out = pd['to_visit_low_priority']
+
+        # this will reorganize all 'to_visit' sites based on new information
+        # if this is too process intensive, set reorg to False
+        if reorg:
+            to_visit_out = set()
+            for to_visit_url in pd['to_visit']:
+                p = urlparse(to_visit_url)
+                if base_url_path == self.base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path):
+                    to_visit_lp_out.add(to_visit_url)
+                else:
+                    to_visit_out.add(to_visit_url)
+        else:
+            to_visit_out = pd['to_visit']
+
+        # this might be "dangerous" since we're swapping out things from a dictionary
+        pd = {
+            'start_url': start_url,
+            'to_visit': to_visit_out,
+            'to_visit_low_priority': to_visit_lp_out,
+            'visited': pd['visited']
+        }
+
+        return pd
+
     def _save_page_data(self, page_data):
         success = True
 
@@ -289,21 +292,9 @@ class Crawler:
 
         return success
 
-    def _load_progress(self, start_url):
 
-        try:
-            filename = path.join(self.file_path, sha256(start_url.encode('utf-8')).hexdigest() + '_progress.pkl')
-            with open(filename, 'rb') as picklefile:
-                resume_data = pickle.load(picklefile)
-        except:
-            resume_data = {
-                'start_url': start_url,
-                'to_visit': {start_url},
-                'to_visit_low_priority': set(),
-                'visited': set()
-            }
 
-        return resume_data
+
 
 
 if __name__ == '__main__':
