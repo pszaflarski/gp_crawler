@@ -1,9 +1,11 @@
-
 from selenium_wrapper import *
 from db_connector import *
 
 from urllib.parse import urljoin
 from urllib.parse import urlparse
+import pickle
+from hashlib import sha256
+from os import path
 
 
 def get_links(tree, current_url):
@@ -48,14 +50,15 @@ def is_internal(base_url, url):
 
 
 class Crawler:
-    def __init__(self, db_connection = 'sqlite:///crawler.db', file_path = './cache/'):
+    def __init__(self, db_connection='sqlite:///crawler.db', file_path='./cache/'):
         self.driver = None
         self.base_url_format = "{scheme}://{netloc}"
         self.base_url_path_format = "{scheme}://{netloc}{path}"
 
+        self.db_connection = db_connection
+        self.file_path = file_path
+
         self.dbc = CrawlerDataConnector(db_connection, file_path)
-
-
 
     def crawl_one(self, page, start_url=None):
         """
@@ -121,6 +124,8 @@ class Crawler:
 
     def _organize_pd(self, url, pd, reorg=True):
 
+        start_url = pd.get('start_url')
+
         pd['visited'].add(url)
 
         p = urlparse(url)
@@ -147,6 +152,7 @@ class Crawler:
 
         # this might be "dangerous" since we're swapping out things from a dictionary
         pd = {
+            'start_url': start_url,
             'to_visit': to_visit_out,
             'to_visit_low_priority': to_visit_lp_out,
             'visited': pd['visited']
@@ -154,10 +160,12 @@ class Crawler:
 
         return pd
 
-    def crawl_site(self, start_url, resume=True, prioritize=True, max_site_size=20000, silent=False):
+    def crawl_site(self, start_url, resume=True, resume_from=None, prioritize=True, max_site_size=20000, silent=False):
         """
         :param start_url: a valid address to a website
         :param resume: if True, it will attempt to resume from previously saved progress
+        :param resume_from: pass resume data to the crawler so that you don't have to restart from the beginning
+            this will override resume=False
         :param prioritize: if True, will prioritize urls with a path that that does not exist in visited and will
             deprioritize any url that has a path that matches any one that has already been crawled for example
             if 'google.com' has already been crawled, then 'google.com/?q=help' will be deprioritized
@@ -166,11 +174,13 @@ class Crawler:
         :param silent: if True, crawler will not print progress to screen as it crawls
         :return: Nothing
         """
-
-        if resume:
+        if resume_from is not None:
+            pd = resume_from
+        elif resume:
             pd = self._load_progress(start_url)
         else:
             pd = {
+                'start_url': start_url,
                 'to_visit': {start_url},
                 'to_visit_low_priority': set(),
                 'visited': set()
@@ -188,8 +198,7 @@ class Crawler:
                     break
 
             # save progress here so that if you have an error with this page, you don't keep trying
-            resume_output = {x: list(y) for x, y in pd.items()}
-            self._save_progress(resume_output)
+            self._save_progress(pd)
 
             pd = self._organize_pd(url, pd)
             r = self.crawl_one(url)
@@ -234,45 +243,74 @@ class Crawler:
                 'internal': internal,
                 'non_http': r.get('non_http'),
                 'external': r.get('external'),
-                'page_source': '5',#r.get('page_source'),
+                'page_source': r.get('page_source'),
                 'url': url,
                 'start_url': start_url,
                 'exception': None
             }
-            print(page_output)
 
             self._save_page_data(page_output)
 
             if not silent:
                 p = urlparse(url)
                 base_url_path = self.base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path)
-                print(start_url, {True:base_url_path,False:url}[prioritize], {x: len(y) for x, y in pd.items()})
+                print(start_url, {True: base_url_path, False: url}[prioritize],
+                      {x: len(y) for x, y in pd.items() if x != 'start_url'})
+
+        if not silent:
+            print('All Done!')
 
     def _save_page_data(self, page_data):
-
         success = True
+
+        try:
+            url = page_data.get('url')
+            filename = path.join(self.file_path, sha256(url.encode('utf-8')).hexdigest() + '.pkl')
+            with open(filename, 'w') as picklefile:
+                pass
+            with open(filename, 'wb') as picklefile:
+                pickle.dump(page_data, picklefile)
+        except:
+            success = False
+
         return success
 
     def _save_progress(self, resume_data):
-        pass
+        success = True
+        try:
+            start_url = resume_data.get('start_url')
+            filename = path.join(self.file_path, sha256(start_url.encode('utf-8')).hexdigest() + '_progress.pkl')
+            with open(filename, 'w') as picklefile:
+                pass
+            with open(filename, 'wb') as picklefile:
+                pickle.dump(resume_data, picklefile)
+        except:
+            success = False
+
+        return success
 
     def _load_progress(self, start_url):
-        """
-        :param start_url: the website that you are crawling
-        :return: a dictionary with {
-            'to_visit': set of pages that you still have to visit,
-            'to_visit_low_priority': set of pages that you still have to visit, but are low priority,
-            'visited': set of pages that have already been visited
-        }
-        """
-        return {
-            'to_visit': {start_url},
-            'to_visit_low_priority': set(),
-            'visited': set()
-        }
+
+        try:
+            filename = path.join(self.file_path, sha256(start_url.encode('utf-8')).hexdigest() + '_progress.pkl')
+            with open(filename, 'rb') as picklefile:
+                resume_data = pickle.load(picklefile)
+        except:
+            resume_data = {
+                'start_url': start_url,
+                'to_visit': {start_url},
+                'to_visit_low_priority': set(),
+                'visited': set()
+            }
+
+        return resume_data
 
 
 if __name__ == '__main__':
     c = Crawler()
 
-    d = c.crawl_site('https://soredgear.com/')
+    # d = c._load_progress('https://soredgear.com/')
+    #
+    # print(d)
+
+    c.crawl_site('https://soredgear.com/')

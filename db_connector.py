@@ -39,15 +39,6 @@ class CrawlerDataConnector:
 
     def save_page_data(self,pd):
         i = self.page_data.insert()
-        """
-        'internal': internal,
-        'non_http': r.get('non_http'),
-        'external': r.get('external'),
-        'page_source': r.get('page_source'),
-        'url': url,
-        'start_url': start_url
-        'exception': None
-        """
 
         row = {
         'internal': pd['internal'],
