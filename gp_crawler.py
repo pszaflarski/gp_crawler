@@ -135,7 +135,8 @@ class Crawler:
                     'page_source': r.get('page_source'),
                     'url': url,
                     'start_url': start_url,
-                    'exception': r.get('exception')
+                    'exception': r.get('exception'),
+                    'scraped_at':datetime.datetime.utcnow()
                 }
                 self._save_page_data(page_output)
                 continue
@@ -171,7 +172,8 @@ class Crawler:
                 'page_source': r.get('page_source'),
                 'url': url,
                 'start_url': start_url,
-                'exception': None
+                'exception': None,
+                'scraped_at': datetime.datetime.utcnow()
             }
 
             self._save_page_data(page_output)
