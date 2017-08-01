@@ -6,12 +6,7 @@ from urllib.parse import urlparse
 import pickle
 from hashlib import sha256
 from os import path
-
-import sqlalchemy
-
-
-from sqlalchemy.dialects import postgresql
-
+import multiprocessing
 
 
 class Crawler:
@@ -136,7 +131,7 @@ class Crawler:
                     'url': url,
                     'start_url': start_url,
                     'exception': r.get('exception'),
-                    'scraped_at':datetime.datetime.utcnow()
+                    'scraped_at': datetime.datetime.utcnow()
                 }
                 self._save_page_data(page_output)
                 continue
@@ -186,6 +181,36 @@ class Crawler:
 
         if not silent:
             print('All Done!')
+
+    def async_crawl_sites(self,
+                          start_urls,
+                          num_workers=5,
+                          resume=True,
+                          resume_from=None,
+                          prioritize=True,
+                          max_site_size=20000,
+                          silent=False):
+
+        def merge_dict(a, b):
+            c = dict(a)
+            c.update(b)
+            return c
+
+        args = {
+            'resume': resume,
+            'resume_from': resume_from,
+            'prioritize': prioritize,
+            'max_site_size': max_site_size,
+            'silent': silent
+        }
+
+        d = [merge_dict({'start_url': x}, args) for x in start_urls]
+
+        pool = multiprocessing.Pool(processes=num_workers)
+        pool.map(self._crawl_site_packed, d)
+
+    def _crawl_site_packed(self, d):
+        self.crawl_site(**d)
 
     def _get_links(self, tree):
         e = tree.xpath("//*/@href")
@@ -295,15 +320,9 @@ class Crawler:
         return success
 
 
-
-
-
-
 if __name__ == '__main__':
     c = Crawler()
 
-    # d = c._load_progress('https://soredgear.com/')
-    #
-    # print(d)
+    url_list = ['http://chef5minutemeals.com/', 'http://slapyamama.com/', 'https://soredgear.com/']
 
-    c.crawl_site('https://soredgear.com/')
+    c.async_crawl_sites(url_list)
