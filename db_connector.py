@@ -149,11 +149,10 @@ class CrawlerDataConnector:
                 if errors >= 3: raise Exception
                 self._create_progress_data_table()
 
-        return {
-            'progress_data_files':progress_data_files,
-            'page_data_files':page_data_files
+        return{
+            'progress_data_files':[_remove_file(x) for x in progress_data_files],
+            'page_data_files':[_remove_file(x) for x in page_data_files]
         }
-
 
     def _save_file(self, file_name, file_contents):
         with open(join(self.file_path, file_name), 'w', encoding='utf-8', errors='ignore') as savefile:

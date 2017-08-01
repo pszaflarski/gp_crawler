@@ -1,19 +1,3 @@
-import time
-import csv
-import json
-import datetime
-import platform
-import subprocess
-import multiprocessing
-import os
-from os import listdir
-from os.path import isfile, join
-from os import path
-import pickle
-from urllib.parse import urljoin
-from urllib.parse import urlparse
-from hashlib import sha256
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -34,6 +18,20 @@ from openpyxl import Workbook
 from sqlalchemy import *
 from sqlalchemy.dialects.postgresql import *
 
+import time
+import csv
+import json
+import datetime
+import platform
+import subprocess
+import multiprocessing
+import os
+from os import listdir
+from os.path import isfile, join
+import pickle
+from urllib.parse import urljoin
+from urllib.parse import urlparse
+from hashlib import sha256
 
 
 def urlget(driver, url, tries=1):

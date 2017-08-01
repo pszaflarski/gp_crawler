@@ -1,5 +1,4 @@
 from common import *
-from db_connector import *
 
 class Crawler:
     def __init__(self, file_path='./cache/', in_memory=False):
@@ -247,7 +246,7 @@ class Crawler:
 
         def load_from_pickle(hashbase):
             try:
-                filename = path.join(hashbase + '_progress.pkl')
+                filename = os.path.join(hashbase + '_progress.pkl')
                 with open(filename, 'rb') as picklefile:
                     resume_data = pickle.load(picklefile)
                 if resume_data['state'] == 'just started' or resume_data['visited'] == set():
@@ -258,7 +257,7 @@ class Crawler:
 
         def load_from_json(hashbase):
             try:
-                filename = path.join(hashbase + '_progress.json')
+                filename = os.path.join(hashbase + '_progress.json')
                 with open(filename, 'r') as jsonfile:
                     resume_data = json.load(jsonfile)
                 if resume_data['state'] == 'just started' or resume_data['visited'] == set():
