@@ -1,13 +1,5 @@
-from selenium_wrapper import *
+from common import *
 from db_connector import *
-
-from urllib.parse import urljoin
-from urllib.parse import urlparse
-import pickle
-from hashlib import sha256
-from os import path
-import multiprocessing
-
 
 class Crawler:
     def __init__(self, file_path='./cache/', in_memory=False):
@@ -17,6 +9,15 @@ class Crawler:
 
         self.file_path = file_path
         self.in_memory = in_memory
+
+        self._progress_data_template = {
+            'start_url': None,
+            'to_visit': set(),
+            'to_visit_low_priority': set(),
+            'visited': set(),
+            'last_activity': datetime.datetime.utcnow(),
+            'state': 'in progress'
+        }
 
     def crawl_one(self, page, start_url=None):
         """
@@ -95,32 +96,34 @@ class Crawler:
         :return: Nothing
         """
         if resume_from is not None:
-            pd = resume_from
+            progress_data = resume_from
         elif resume:
-            pd = self._load_progress(start_url)
+            progress_data = self._load_progress(start_url)
         else:
-            pd = {
+            progress_data = {
                 'start_url': start_url,
                 'to_visit': {start_url},
                 'to_visit_low_priority': set(),
-                'visited': set()
+                'visited': set(),
+                'last_activity': datetime.datetime.utcnow(),
+                'state': 'just started'
             }
 
         while True:
             try:
-                url = pd['to_visit'].pop()
+                url = progress_data['to_visit'].pop()
             except KeyError:
                 if prioritize:
                     break
                 try:
-                    url = pd['to_visit_low_priority'].pop()
+                    url = progress_data['to_visit_low_priority'].pop()
                 except KeyError:
                     break
 
             # save progress here so that if you have an error with this page, you don't keep trying
-            self._save_progress(pd)
+            self._save_progress(progress_data)
 
-            pd = self._organize_pd(url, pd)
+            progress_data = self._organize_pd(url, progress_data)
             r = self.crawl_one(url)
             if r.get('exception') is not None:
                 page_output = {
@@ -138,27 +141,29 @@ class Crawler:
 
             # handle redirected urls
             redir_url = r['url']
-            pd = self._organize_pd(redir_url, pd)
+            progress_data = self._organize_pd(redir_url, progress_data)
 
             # convert all internal links to absolute
             internal = [urljoin(url, x) for x in r['internal']]
 
-            add_to_visit_staging = [x for x in internal if x not in pd['visited']
-                                    and x not in pd['to_visit'] and x not in pd['to_visit_low_priority']]
+            add_to_visit_staging = [x for x in internal if x not in progress_data['visited']
+                                    and x not in progress_data['to_visit'] and x not in progress_data['to_visit_low_priority']]
 
             # all links that whose path has already been visited and all links whose path has already been labelled
             # low priority will be added to low priority
             add_to_visit_lp = [x for x in add_to_visit_staging if
-                               urlparse(x).netloc in pd['visited'] or
-                               urlparse(x).netloc in pd['to_visit_low_priority']]
+                               urlparse(x).netloc in progress_data['visited'] or
+                               urlparse(x).netloc in progress_data['to_visit_low_priority']]
 
             # all other links need to be visited
             add_to_visit = [x for x in add_to_visit_staging if x not in add_to_visit_lp]
             del add_to_visit_staging
 
             # update the lists where you still have to visit
-            pd['to_visit'].update(add_to_visit)
-            pd['to_visit_low_priority'].update(add_to_visit_lp)
+            progress_data['to_visit'].update(add_to_visit)
+            progress_data['to_visit_low_priority'].update(add_to_visit_lp)
+            progress_data['state'] = 'in progress'
+            progress_data['last_activity'] = datetime.datetime.utcnow()
 
             page_output = {
                 'internal': internal,
@@ -177,8 +182,10 @@ class Crawler:
                 p = urlparse(url)
                 base_url_path = self.base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path)
                 print(start_url, {True: base_url_path, False: url}[prioritize],
-                      {x: len(y) for x, y in pd.items() if x != 'start_url'})
+                      {x: len(y) for x, y in progress_data.items() if 'visit' in x})
 
+        progress_data['state'] = 'complete'
+        self._save_progress(progress_data)
         if not silent:
             print('All Done!')
 
@@ -238,23 +245,64 @@ class Crawler:
 
     def _load_progress(self, start_url):
 
-        try:
-            filename = path.join(self.file_path, sha256(start_url.encode('utf-8')).hexdigest() + '_progress.pkl')
-            with open(filename, 'rb') as picklefile:
-                resume_data = pickle.load(picklefile)
-        except:
+        def load_from_pickle(hashbase):
+            try:
+                filename = path.join(hashbase + '_progress.pkl')
+                with open(filename, 'rb') as picklefile:
+                    resume_data = pickle.load(picklefile)
+                if resume_data['state'] == 'just started' or resume_data['visited'] == set():
+                    resume_data['to_visit'] = {start_url}
+            except FileNotFoundError:
+                resume_data = {}
+            return resume_data
+
+        def load_from_json(hashbase):
+            try:
+                filename = path.join(hashbase + '_progress.json')
+                with open(filename, 'r') as jsonfile:
+                    resume_data = json.load(jsonfile)
+                if resume_data['state'] == 'just started' or resume_data['visited'] == set():
+                    resume_data['to_visit'] = {start_url}
+            except FileNotFoundError:
+                resume_data = {}
+
+            return resume_data
+
+        hashbase = sha256(start_url.encode('utf-8')).hexdigest()
+
+        resume_data = load_from_pickle(hashbase)
+        if resume_data == {}: resume_data = load_from_json(hashbase)
+        if resume_data == {}:
             resume_data = {
-                'start_url': start_url,
-                'to_visit': {start_url},
-                'to_visit_low_priority': set(),
-                'visited': set()
-            }
+                    'start_url': start_url,
+                    'to_visit': {start_url},
+                    'to_visit_low_priority': set(),
+                    'visited': set(),
+                    'last_activity': datetime.datetime.utcnow(),
+                    'state':'just started'
+                }
+
+        resume_data = self._repair_progress_data(resume_data)
 
         return resume_data
+
+    def _repair_progress_data(self, pd):
+        broken_keys = {x: y for x, y in pd.items() if x not in self._progress_data_template}
+        return_dict = dict(pd)
+        return_dict.update(broken_keys)
+
+        return_dict['to_visit'] = set(return_dict['to_visit'])
+        return_dict['to_visit_low_priority'] = set(return_dict['to_visit_low_priority'])
+        return_dict['visited'] = set(return_dict['visited'])
+
+        del pd
+        return return_dict
 
     def _organize_pd(self, url, pd, reorg=True):
 
         start_url = pd.get('start_url')
+        last_activity = pd.get('last_activity')
+        state =  pd.get('state')
 
         pd['visited'].add(url)
 
@@ -285,7 +333,9 @@ class Crawler:
             'start_url': start_url,
             'to_visit': to_visit_out,
             'to_visit_low_priority': to_visit_lp_out,
-            'visited': pd['visited']
+            'visited': pd['visited'],
+            'last_activity': last_activity,
+            'state': state
         }
 
         return pd
@@ -326,3 +376,4 @@ if __name__ == '__main__':
     url_list = ['http://chef5minutemeals.com/', 'http://slapyamama.com/', 'https://soredgear.com/']
 
     c.async_crawl_sites(url_list)
+    # c.crawl_site(url_list[0])

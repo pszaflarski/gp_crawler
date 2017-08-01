@@ -1,10 +1,18 @@
-import os
 import time
 import csv
 import json
 import datetime
 import platform
 import subprocess
+import multiprocessing
+import os
+from os import listdir
+from os.path import isfile, join
+from os import path
+import pickle
+from urllib.parse import urljoin
+from urllib.parse import urlparse
+from hashlib import sha256
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -22,6 +30,10 @@ from html import escape
 import boto3
 
 from openpyxl import Workbook
+
+from sqlalchemy import *
+from sqlalchemy.dialects.postgresql import *
+
 
 
 def urlget(driver, url, tries=1):

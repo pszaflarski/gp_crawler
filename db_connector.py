@@ -1,14 +1,4 @@
-from sqlalchemy import *
-from sqlalchemy.dialects.postgresql import *
-import datetime
-
-from os import listdir
-from os.path import isfile, join
-
-import pickle
-
-import json
-
+from common import *
 
 class CrawlerDataConnector:
     def __init__(self, db_connection='sqlite:///crawler.db', file_path='./cache/', s3_bucket=None):
@@ -33,13 +23,13 @@ class CrawlerDataConnector:
                                    Column('non_http', TEXT),
                                    Column('page_source', TEXT, index=True),
                                    Column('exception', TEXT),
-                                   Column('scraped_at', DATETIME),
+                                   Column('scraped_at', DATETIME, index = True),
                                    )
 
             self.progress_data = Table('progress_data', self.metadata,
                                        Column('start_url', TEXT, index=True),
                                        Column('progress_file', TEXT),
-                                       Column('last_activity', DATETIME),
+                                       Column('last_activity', DATETIME, index = True),
                                        Column('state', TEXT, index=True),
                                        )
         elif 'postgresql' in self.dialect:
@@ -51,43 +41,47 @@ class CrawlerDataConnector:
                                    Column('external', JSONB),
                                    Column('page_source', TEXT, index=True),
                                    Column('exception', TEXT),
-                                   Column('scraped_at', DATETIME),
+                                   Column('scraped_at', DATETIME, index = True),
                                    )
 
             self.progress_data = Table('progress_data', self.metadata,
                                        Column('start_url', TEXT, primary_key=True),
                                        Column('progress_file', TEXT),
-                                       Column('last_activity', DATETIME),
+                                       Column('last_activity', DATETIME, index = True),
                                        Column('state', TEXT, index=True),
                                        )
 
     def _create_page_data_table(self):
         self.page_data.create()
 
-    def _get_data_from_cache(self):
-
-        # u = update(mytable)
-        # u = u.values({"field3": "new_value"})
-        # u = u.where(mytable.c.id == 33)
-        # session.execute(u)
-
+    def cache_to_db(self):
 
         files = [x for x in listdir(self.file_path) if isfile(join(self.file_path, x))]
 
         page_data_files = [join(self.file_path, x) for x in files if len(x) == 68 and '.pkl' in x]
         progress_data_files = [join(self.file_path, x) for x in files if len(x) == 77 and '.pkl' in x]
 
-        def _make_nice(x):
+        def _remove_file(file):
+            try:
+                os.remove(file)
+                return None
+            except Exception as e:
+                return e
+
+        def _make_nice(x, to_db = True):
             if isinstance(x, set):
                 x = list(x)
             elif isinstance(x, datetime.datetime):
-                return x
+                if to_db:
+                    return x
+                else:
+                    return str(x)
             elif isinstance(x, str):
                 return x
-            try:
+            if to_db:
                 return json.dumps(x)
-            except:
-                return json.dumps(None)
+            else:
+                return x
 
         page_data_out = []
         for file in page_data_files:
@@ -100,7 +94,17 @@ class CrawlerDataConnector:
 
             self._save_file(hashstring, source_html)
 
-            page_data_out.append(data)
+            try:
+                u = update(self.page_data)
+                u = u.values({x:y for x,y in data.items() if x != 'page_source'})
+                u = u.where(self.page_data.c.page_source==data['page_source'])
+                r = self.db.execute(u)
+                rc = r.rowcount
+            except:
+                rc =0
+
+            if rc == 0:
+                page_data_out.append(data)
 
         while True:
             errors = 0
@@ -117,29 +121,39 @@ class CrawlerDataConnector:
             data = {x: y for x, y in pickle.load(open(file, 'rb')).items()}
 
             hashstring = str(file.split('/')[-1]).split('.')[0] + '.json'
-            json_out = {
-                'to_visit': list(data.get('to_visit')),
-                'to_visit_low_priority': list(data.get('to_visit_low_priority')),
-                'visited': list(data.get('visited'))
-            }
+            json_out = {x:_make_nice(y, to_db=False) for x, y in data.items()}
 
             self._save_file(hashstring, json.dumps(json_out))
 
-            data = {x: _make_nice(y) for x, y in data.items() if x not in json_out}
-
             data.update({'progress_file': hashstring})
 
-            progress_data_out.append(data)
+            try:
+                u = update(self.progress_data)
+                u = u.values({x: y for x, y in data.items() if x != 'progress_file'})
+                u = u.where(self.page_data.c.page_source == data['progress_file'])
+                r = self.db.execute(u)
+                rc = r.rowcount
+            except:
+                rc = 0
 
-            while True:
-                errors = 0
-                try:
-                    self.db.execute(self.progress_data.insert(), progress_data_out)
-                    break
-                except:
-                    errors += 1
-                    if errors >= 3: raise Exception
-                    self._create_progress_data_table()
+            if rc == 0:
+                progress_data_out.append(data)
+
+        while True:
+            errors = 0
+            try:
+                self.db.execute(self.progress_data.insert(), progress_data_out)
+                break
+            except:
+                errors += 1
+                if errors >= 3: raise Exception
+                self._create_progress_data_table()
+
+        return {
+            'progress_data_files':progress_data_files,
+            'page_data_files':page_data_files
+        }
+
 
     def _save_file(self, file_name, file_contents):
         with open(join(self.file_path, file_name), 'w', encoding='utf-8', errors='ignore') as savefile:
@@ -183,4 +197,4 @@ class CrawlerDataConnector:
 if __name__ == '__main__':
     cdc = CrawlerDataConnector()
 
-    cdc._get_data_from_cache()
+    cdc.cache_to_db()
