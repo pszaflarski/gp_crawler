@@ -1,13 +1,25 @@
 from common import *
 
+
 class Crawler:
-    def __init__(self, file_path='./cache/', in_memory=False):
+    def __init__(self, file_path=None, in_memory=False, s3_bucket=None, s3_cred_dict=None):
         self.driver = None
         self.base_url_format = "{scheme}://{netloc}"
         self.base_url_path_format = "{scheme}://{netloc}{path}"
 
-        self.file_path = file_path
+        if file_path:
+            self.file_path = file_path
+        else:
+            self.file_path = FILE_PATH
+
         self.in_memory = in_memory
+
+        if s3_bucket is None:
+            self.s3_bucket = S3_BUCKET
+            self.s3_cred_dict = S3_CREDS
+        else:
+            self.s3_bucket = s3_bucket
+            self.s3_cred_dict = s3_cred_dict
 
         self._progress_data_template = {
             'start_url': None,
@@ -146,7 +158,8 @@ class Crawler:
             internal = [urljoin(url, x) for x in r['internal']]
 
             add_to_visit_staging = [x for x in internal if x not in progress_data['visited']
-                                    and x not in progress_data['to_visit'] and x not in progress_data['to_visit_low_priority']]
+                                    and x not in progress_data['to_visit'] and x not in progress_data[
+                                        'to_visit_low_priority']]
 
             # all links that whose path has already been visited and all links whose path has already been labelled
             # low priority will be added to low priority
@@ -180,8 +193,10 @@ class Crawler:
             if not silent:
                 p = urlparse(url)
                 base_url_path = self.base_url_path_format.format(scheme=p.scheme, netloc=p.netloc, path=p.path)
-                print(start_url, {True: base_url_path, False: url}[prioritize],
-                      {x: len(y) for x, y in progress_data.items() if 'visit' in x})
+                printout = {x: len(y) for x, y in progress_data.items() if 'visit' in x}
+                printout.update(
+                    {'site_size': printout['visited'] + printout['to_visit'] + printout['to_visit_low_priority']})
+                print(start_url, {True: base_url_path, False: url}[prioritize], printout)
 
         progress_data['state'] = 'complete'
         self._save_progress(progress_data)
@@ -190,7 +205,7 @@ class Crawler:
 
     def async_crawl_sites(self,
                           start_urls,
-                          num_workers=5,
+                          num_workers=2,
                           resume=True,
                           resume_from=None,
                           prioritize=True,
@@ -243,26 +258,39 @@ class Crawler:
         return is_internal
 
     def _load_progress(self, start_url):
+        # # I use the database connector to load progress, which means that it is created when this object is created
+        # # I may rethink how this works since it's a little unintuitive, especially if you just want to work locally
+        #
+        # resume_data = self.crawler_data_connector.load_progress(start_url)
+        # resume_data = self._repair_progress_data(resume_data)
 
         def load_from_pickle(hashbase):
             try:
-                filename = os.path.join(hashbase + '_progress.pkl')
+                filename = os.path.join(self.file_path, hashbase + '_progress.pkl')
                 with open(filename, 'rb') as picklefile:
                     resume_data = pickle.load(picklefile)
                 if resume_data['state'] == 'just started' or resume_data['visited'] == set():
                     resume_data['to_visit'] = {start_url}
             except FileNotFoundError:
                 resume_data = {}
+
             return resume_data
 
         def load_from_json(hashbase):
             try:
-                filename = os.path.join(hashbase + '_progress.json')
-                with open(filename, 'r') as jsonfile:
-                    resume_data = json.load(jsonfile)
+
+                filename = hashbase + '_progress.json'
+                path_filename = os.path.join(self.file_path, filename)
+
+                if self.s3_bucket is None:
+                    with open(path_filename, 'r') as jsonfile:
+                        file_source = jsonfile.read()
+                else:
+                    file_source = get_from_s3(filename, bucket=self.s3_bucket, cred_dict=self.s3_cred_dict)
+                resume_data = json.loads(file_source)
                 if resume_data['state'] == 'just started' or resume_data['visited'] == set():
                     resume_data['to_visit'] = {start_url}
-            except FileNotFoundError:
+            except (FileNotFoundError, Exception):
                 resume_data = {}
 
             return resume_data
@@ -273,13 +301,13 @@ class Crawler:
         if resume_data == {}: resume_data = load_from_json(hashbase)
         if resume_data == {}:
             resume_data = {
-                    'start_url': start_url,
-                    'to_visit': {start_url},
-                    'to_visit_low_priority': set(),
-                    'visited': set(),
-                    'last_activity': datetime.datetime.utcnow(),
-                    'state':'just started'
-                }
+                'start_url': start_url,
+                'to_visit': {start_url},
+                'to_visit_low_priority': set(),
+                'visited': set(),
+                'last_activity': datetime.datetime.utcnow(),
+                'state': 'just started'
+            }
 
         resume_data = self._repair_progress_data(resume_data)
 
@@ -299,9 +327,11 @@ class Crawler:
 
     def _organize_pd(self, url, pd, reorg=True):
 
+        pd = self._repair_progress_data(pd)
+
         start_url = pd.get('start_url')
         last_activity = pd.get('last_activity')
-        state =  pd.get('state')
+        state = pd.get('state')
 
         pd['visited'].add(url)
 
@@ -347,8 +377,9 @@ class Crawler:
             filename = os.path.join(self.file_path, sha256(url.encode('utf-8')).hexdigest() + '.pkl')
             with open(filename, 'w') as picklefile:
                 pass
-            with open(filename, 'wb') as picklefile:
-                pickle.dump(page_data, picklefile)
+            picklefile = open(filename, 'wb')
+            pickle.dump(page_data, picklefile)
+            picklefile.close()
         except:
             success = False
 
@@ -375,4 +406,4 @@ if __name__ == '__main__':
     url_list = ['http://chef5minutemeals.com/', 'http://slapyamama.com/', 'https://soredgear.com/']
 
     c.async_crawl_sites(url_list)
-    # c.crawl_site(url_list[0])
+    # c.crawl_site(url_list[1])
