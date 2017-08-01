@@ -7,16 +7,16 @@ from selenium.webdriver.common.keys import Keys
 import selenium.common.exceptions as selenium_exceptions
 from selenium.webdriver.chrome.options import Options
 
+from sqlalchemy import *
+
+
+from openpyxl import Workbook
+
 from lxml import html
 from lxml import etree
 from html import escape
 
 import boto3
-
-from openpyxl import Workbook
-
-from sqlalchemy import *
-from sqlalchemy.dialects.postgresql import *
 
 import time
 import csv
@@ -33,6 +33,7 @@ from urllib.parse import urljoin
 from urllib.parse import urlparse
 from hashlib import sha256
 
+from secrets import *
 
 def urlget(driver, url, tries=1):
     if driver is None: driver = init_webdriver()
@@ -211,7 +212,6 @@ def csv_to_xl(csv_file_source, xlsx_filename, encoding='utf-8'):
             ws.append(row)
 
     wb.save(xlsx_filename)
-
 
 if __name__ == '__main__':
     pass

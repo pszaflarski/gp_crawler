@@ -344,7 +344,7 @@ class Crawler:
 
         try:
             url = page_data.get('url')
-            filename = path.join(self.file_path, sha256(url.encode('utf-8')).hexdigest() + '.pkl')
+            filename = os.path.join(self.file_path, sha256(url.encode('utf-8')).hexdigest() + '.pkl')
             with open(filename, 'w') as picklefile:
                 pass
             with open(filename, 'wb') as picklefile:
@@ -358,7 +358,7 @@ class Crawler:
         success = True
         try:
             start_url = resume_data.get('start_url')
-            filename = path.join(self.file_path, sha256(start_url.encode('utf-8')).hexdigest() + '_progress.pkl')
+            filename = os.path.join(self.file_path, sha256(start_url.encode('utf-8')).hexdigest() + '_progress.pkl')
             with open(filename, 'w') as picklefile:
                 pass
             with open(filename, 'wb') as picklefile:

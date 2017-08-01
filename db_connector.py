@@ -1,21 +1,20 @@
 from common import *
 
 class CrawlerDataConnector:
-    def __init__(self, db_connection='sqlite:///crawler.db', file_path='./cache/', s3_bucket=None):
+    def __init__(self, db_connection=SWITCH['there'], file_path='./cache/', s3_bucket=None):
 
         self.db_connection = db_connection
         self.file_path = file_path
         self.s3_bucket = s3_bucket
 
-        self.db = create_engine(db_connection)
-        self.db.echo = False
-
-        self.metadata = MetaData(self.db)
         self.dialect = self.db_connection.split(':')[0]
 
         if self.dialect == 'sqlite':
+            self.db = create_engine(db_connection)
+            self.db.echo = False
+            self.metadata = MetaData(self.db)
 
-            self.page_data = Table('page_data', self.metadata,
+            self.page_data = Table(PAGE_DATA_TABLE_NAME, self.metadata,
                                    Column('start_url', TEXT, index=True),
                                    Column('url', TEXT, index=True),
                                    Column('internal', TEXT),
@@ -23,38 +22,43 @@ class CrawlerDataConnector:
                                    Column('non_http', TEXT),
                                    Column('page_source', TEXT, index=True),
                                    Column('exception', TEXT),
-                                   Column('scraped_at', DATETIME, index = True),
+                                   Column('scraped_at', DATETIME, index = True)
                                    )
 
-            self.progress_data = Table('progress_data', self.metadata,
+            self.progress_data = Table(PROGRESS_DATA_TABLE_NAME, self.metadata,
                                        Column('start_url', TEXT, index=True),
                                        Column('progress_file', TEXT),
                                        Column('last_activity', DATETIME, index = True),
-                                       Column('state', TEXT, index=True),
+                                       Column('state', TEXT, index=True)
                                        )
         elif 'postgresql' in self.dialect:
+            from sqlalchemy.dialects import postgresql
 
-            self.page_data = Table('page_data', self.metadata,
-                                   Column('start_url', TEXT, index=True),
-                                   Column('url', TEXT, index=True),
-                                   Column('internal', JSONB),
-                                   Column('external', JSONB),
-                                   Column('page_source', TEXT, index=True),
-                                   Column('exception', TEXT),
-                                   Column('scraped_at', DATETIME, index = True),
+            self.db = create_engine(db_connection, isolation_level = 'AUTOCOMMIT')
+            self.db.echo = False
+            self.metadata = MetaData(self.db, schema=SCHEMA)
+
+            self.page_data = Table(PAGE_DATA_TABLE_NAME, self.metadata,
+                                   Column('start_url', postgresql.TEXT, index=True),
+                                   Column('url', postgresql.TEXT, index=True),
+                                   Column('internal', postgresql.JSONB),
+                                   Column('external', postgresql.JSONB),
+                                   Column('page_source', postgresql.TEXT, index=True),
+                                   Column('exception', postgresql.TEXT),
+                                   Column('scraped_at', postgresql.TIMESTAMP, index = True)
                                    )
 
-            self.progress_data = Table('progress_data', self.metadata,
-                                       Column('start_url', TEXT, primary_key=True),
-                                       Column('progress_file', TEXT),
-                                       Column('last_activity', DATETIME, index = True),
-                                       Column('state', TEXT, index=True),
+            self.progress_data = Table(PROGRESS_DATA_TABLE_NAME, self.metadata,
+                                       Column('start_url', postgresql.TEXT, primary_key=True),
+                                       Column('progress_file', postgresql.TEXT),
+                                       Column('last_activity', postgresql.TIMESTAMP, index = True),
+                                       Column('state', postgresql.TEXT, index=True)
                                        )
 
     def _create_page_data_table(self):
         self.page_data.create()
 
-    def cache_to_db(self):
+    def cache_to_db(self, delete_after_sync = True):
 
         files = [x for x in listdir(self.file_path) if isfile(join(self.file_path, x))]
 
@@ -84,6 +88,7 @@ class CrawlerDataConnector:
                 return x
 
         page_data_out = []
+        cols = {str(x).split('.')[-1] for x in self.page_data.columns}
         for file in page_data_files:
             data = {x: _make_nice(y) for x, y in pickle.load(open(file, 'rb')).items()}
 
@@ -94,14 +99,11 @@ class CrawlerDataConnector:
 
             self._save_file(hashstring, source_html)
 
-            try:
-                u = update(self.page_data)
-                u = u.values({x:y for x,y in data.items() if x != 'page_source'})
-                u = u.where(self.page_data.c.page_source==data['page_source'])
-                r = self.db.execute(u)
-                rc = r.rowcount
-            except:
-                rc =0
+            u = update(self.page_data)
+            u = u.values({x:y for x,y in data.items() if x != 'page_source' and x in cols})
+            u = u.where(self.page_data.c.page_source==data['page_source'])
+            r = self.db.execute(u)
+            rc = r.rowcount
 
             if rc == 0:
                 page_data_out.append(data)
@@ -109,7 +111,8 @@ class CrawlerDataConnector:
         while True:
             errors = 0
             try:
-                self.db.execute(self.page_data.insert(), page_data_out)
+                if page_data_out:
+                    self.db.execute(self.page_data.insert(), page_data_out)
                 break
             except:
                 errors += 1
@@ -117,6 +120,7 @@ class CrawlerDataConnector:
                 self._create_page_data_table()
 
         progress_data_out = []
+        cols = {str(x).split('.')[-1] for x in self.progress_data.columns}
         for file in progress_data_files:
             data = {x: y for x, y in pickle.load(open(file, 'rb')).items()}
 
@@ -127,14 +131,11 @@ class CrawlerDataConnector:
 
             data.update({'progress_file': hashstring})
 
-            try:
-                u = update(self.progress_data)
-                u = u.values({x: y for x, y in data.items() if x != 'progress_file'})
-                u = u.where(self.page_data.c.page_source == data['progress_file'])
-                r = self.db.execute(u)
-                rc = r.rowcount
-            except:
-                rc = 0
+            u = update(self.progress_data)
+            u = u.values({x: y for x, y in data.items() if x != 'start_url' and x in cols})
+            u = u.where(self.page_data.c.start_url == data['start_url'])
+            r = self.db.execute(u)
+            rc = r.rowcount
 
             if rc == 0:
                 progress_data_out.append(data)
@@ -142,17 +143,21 @@ class CrawlerDataConnector:
         while True:
             errors = 0
             try:
-                self.db.execute(self.progress_data.insert(), progress_data_out)
+                if progress_data_out:
+                    self.db.execute(self.progress_data.insert(), progress_data_out)
                 break
             except:
                 errors += 1
                 if errors >= 3: raise Exception
                 self._create_progress_data_table()
 
-        return{
-            'progress_data_files':[_remove_file(x) for x in progress_data_files],
-            'page_data_files':[_remove_file(x) for x in page_data_files]
-        }
+        if delete_after_sync:
+            return{
+                'progress_data_files':[_remove_file(x) for x in progress_data_files],
+                'page_data_files':[_remove_file(x) for x in page_data_files]
+            }
+        else:
+            return {}
 
     def _save_file(self, file_name, file_contents):
         with open(join(self.file_path, file_name), 'w', encoding='utf-8', errors='ignore') as savefile:
@@ -196,4 +201,4 @@ class CrawlerDataConnector:
 if __name__ == '__main__':
     cdc = CrawlerDataConnector()
 
-    cdc.cache_to_db()
+    cdc.cache_to_db(delete_after_sync=False)
