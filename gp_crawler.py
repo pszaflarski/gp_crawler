@@ -51,44 +51,44 @@ class Crawler:
         source = ''
         current_url = page
 
-        try:
-            if start_url is None:
-                # this will guess at what the start_url should be
-                p = urlparse(page)
-                start_url = "{scheme}://{netloc}".format(scheme=p.scheme, netloc=p.netloc)
+        # try:
+        if start_url is None:
+            # this will guess at what the start_url should be
+            p = urlparse(page)
+            start_url = "{scheme}://{netloc}".format(scheme=p.scheme, netloc=p.netloc)
 
-            self.driver = urlget(self.driver, page)
+        self.driver = urlget(self.driver, page)
 
-            source = page_source(self.driver)
+        source = page_source(self.driver)
 
-            tree = etree_pipeline_fromstring(source)
+        tree = etree_pipeline_fromstring(source)
 
-            current_url = self.driver.current_url
-            links = self._get_links(tree)
+        current_url = self.driver.current_url
+        links = self._get_links(tree)
 
-            external = {x for x in links if not self._is_internal(start_url, x)}
-            internal = {x for x in links if x not in external}
+        external = {x for x in links if not self._is_internal(start_url, x)}
+        internal = {x for x in links if x not in external}
 
-            non_http = {x for x in internal if urlparse(x).scheme not in {'http', 'https', ''}}
-            internal = {x for x in internal if x not in non_http}
+        non_http = {x for x in internal if urlparse(x).scheme not in {'http', 'https', ''}}
+        internal = {x for x in internal if x not in non_http}
 
-            out_dict = {
-                'internal': internal,
-                'non_http': non_http,
-                'external': external,
-                'page_source': source,
-                'url': current_url,
-                'exception': None
-            }
-        except Exception as exc:
-            out_dict = {
-                'internal': internal,
-                'non_http': non_http,
-                'external': external,
-                'page_source': source,
-                'url': current_url,
-                'exception': str(exc)
-            }
+        out_dict = {
+            'internal': internal,
+            'non_http': non_http,
+            'external': external,
+            'page_source': source,
+            'url': current_url,
+            'exception': None
+        }
+        # except Exception as exc:
+        #     out_dict = {
+        #         'internal': internal,
+        #         'non_http': non_http,
+        #         'external': external,
+        #         'page_source': source,
+        #         'url': current_url,
+        #         'exception': str(exc)
+        #     }
 
         return out_dict
 
@@ -258,11 +258,6 @@ class Crawler:
         return is_internal
 
     def _load_progress(self, start_url):
-        # # I use the database connector to load progress, which means that it is created when this object is created
-        # # I may rethink how this works since it's a little unintuitive, especially if you just want to work locally
-        #
-        # resume_data = self.crawler_data_connector.load_progress(start_url)
-        # resume_data = self._repair_progress_data(resume_data)
 
         def load_from_pickle(hashbase):
             try:
@@ -403,7 +398,12 @@ class Crawler:
 if __name__ == '__main__':
     c = Crawler()
 
-    url_list = ['http://chef5minutemeals.com/', 'http://slapyamama.com/', 'https://soredgear.com/']
+    url_list = ['noballs.co.uk/',
+                'movimentoapparel.com/',
+                'veganrobs.com/',
+                'getyuve.com/',
+                'effifoods.com/'
+    ]
 
     c.async_crawl_sites(url_list)
     # c.crawl_site(url_list[1])

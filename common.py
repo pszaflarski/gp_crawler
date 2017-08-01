@@ -38,6 +38,10 @@ from secrets import *
 def urlget(driver, url, tries=1):
     if driver is None: driver = init_webdriver()
 
+    p = urlparse(url)
+    if p.scheme == '' or p.scheme is None:
+        url = urljoin('http://',url)
+
     for i in range(tries):
         try:
             driver.get(url)
