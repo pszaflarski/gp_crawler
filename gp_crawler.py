@@ -106,19 +106,30 @@ class Crawler:
         :param silent: if True, crawler will not print progress to screen as it crawls
         :return: Nothing
         """
+        _p = urlparse(start_url)
+
+        if _p.scheme == '' or _p.scheme is None:
+            _start_url = urljoin('http://', _p.geturl())
+        else:
+            _start_url = start_url
+        del _p
+        _start_url = _start_url.replace('///','//')
+
         if resume_from is not None:
             progress_data = resume_from
         elif resume:
-            progress_data = self._load_progress(start_url)
+            progress_data = self._load_progress(_start_url)
         else:
             progress_data = {
-                'start_url': start_url,
-                'to_visit': {start_url},
+                'start_url': _start_url,
+                'to_visit': {_start_url},
                 'to_visit_low_priority': set(),
                 'visited': set(),
                 'last_activity': datetime.datetime.utcnow(),
                 'state': 'just started'
             }
+
+        progress_data = self._repair_progress_data(progress_data)
 
         while True:
             try:
@@ -143,7 +154,7 @@ class Crawler:
                     'external': r.get('external'),
                     'page_source': r.get('page_source'),
                     'url': url,
-                    'start_url': start_url,
+                    'start_url': _start_url,
                     'exception': r.get('exception'),
                     'scraped_at': datetime.datetime.utcnow()
                 }
@@ -183,7 +194,7 @@ class Crawler:
                 'external': r.get('external'),
                 'page_source': r.get('page_source'),
                 'url': url,
-                'start_url': start_url,
+                'start_url': _start_url,
                 'exception': None,
                 'scraped_at': datetime.datetime.utcnow()
             }
@@ -196,12 +207,12 @@ class Crawler:
                 printout = {x: len(y) for x, y in progress_data.items() if 'visit' in x}
                 printout.update(
                     {'site_size': printout['visited'] + printout['to_visit'] + printout['to_visit_low_priority']})
-                print(start_url, {True: base_url_path, False: url}[prioritize], printout)
+                print(_start_url, {True: base_url_path, False: url}[prioritize], printout)
 
         progress_data['state'] = 'complete'
-        self._save_progress(progress_data)
+        success = self._save_progress(progress_data)
         if not silent:
-            print('All Done!')
+            print(_start_url, 'All Done! saved -', success)
 
     def async_crawl_sites(self,
                           start_urls,
@@ -381,6 +392,11 @@ class Crawler:
         return success
 
     def _save_progress(self, resume_data):
+        print(resume_data)
+
+        input()
+
+
         success = True
         try:
             start_url = resume_data.get('start_url')
@@ -405,5 +421,5 @@ if __name__ == '__main__':
                 'effifoods.com/'
     ]
 
-    c.async_crawl_sites(url_list)
-    # c.crawl_site(url_list[1])
+    # c.async_crawl_sites(url_list)
+    c.crawl_site(url_list[2])

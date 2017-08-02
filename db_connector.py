@@ -139,6 +139,7 @@ class CrawlerDataConnector:
         data = {}
         progress_data_out = []
         cols = {str(x).split('.')[-1] for x in self.progress_data.columns}
+
         for file in progress_data_files:
             data = {x: y for x, y in pickle.load(open(file, 'rb')).items()}
 
@@ -152,7 +153,7 @@ class CrawlerDataConnector:
             try:
                 u = update(self.progress_data)
                 u = u.values({x: y for x, y in data.items() if x != 'start_url' and x in cols})
-                u = u.where(self.page_data.c.start_url == data['start_url'])
+                u = u.where(self.progress_data.c.start_url == data['start_url'])
                 r = self.db.execute(u)
                 rc = r.rowcount
             except:
@@ -188,39 +189,8 @@ class CrawlerDataConnector:
         else:
             file_to_s3(file_name, file_contents, self.s3_bucket, self.s3_cred_dict)
 
-    def insert_page_data(self, page_data):
-        i = self.page_data.insert()
-
-        row = {
-            'internal': page_data['internal'],
-            'non_http': page_data['non_http'],
-            'external': page_data['external'],
-            'page_source': 'FFFFFFFFFFFFF',  # ,pd[''],
-            'url': page_data['url'],
-            'start_url': page_data['start_url'],
-            'exception': None,
-            'scraped_at': datetime.datetime.utcnow()
-
-        }
-        print(row)
-        i.execute(row)
-
     def _create_progress_data_table(self):
         self.progress_data.create()
-
-    def insert_progress_data(self, progress_data):
-        i = self.page_data.insert()
-
-        row = {
-            'start_url': progress_data['start_url'],
-            'to_visit': progress_data['to_visit'],
-            'to_visit_low_priority': progress_data['to_visit_low_priority'],
-            'visited': progress_data['visited'],
-            'last_activity': progress_data['last_activity'],
-            'state': progress_data['state'],
-        }
-        print(row)
-        i.execute(row)
 
 
 if __name__ == '__main__':
