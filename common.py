@@ -16,6 +16,8 @@ from lxml import html
 from lxml import etree
 from html import escape
 
+import psutil
+
 import boto3
 
 import time

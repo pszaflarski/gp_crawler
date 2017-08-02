@@ -417,7 +417,8 @@ class Crawler:
 if __name__ == '__main__':
     c = Crawler()
 
-    url_list = ['noballs.co.uk/',
+    url_list = [
+                'noballs.co.uk/',
                 'movimentoapparel.com/',
                 'veganrobs.com/',
                 'getyuve.com/',

@@ -3,7 +3,6 @@ from common import *
 from gp_crawler import *
 
 
-
 class Octopus:
     def __init__(self, file_path=None, in_memory=False, s3_bucket=None, s3_cred_dict=None):
         self.driver = None
@@ -44,41 +43,58 @@ class Octopus:
         num_workers = 2
         self.crawler.async_crawl_sites(url_list, num_workers=num_workers)
 
-
-def vaccuum_files():
-    while True:
+    def vaccuum_files(self):
         if platform.system() == 'Windows':
             cmd = 'python db_connector.py'
         elif platform.system() == 'Linux':
             cmd = 'sudo python3 db_connector.py'
 
         subprocess.call(cmd, shell=True)
-        time.sleep(10)
+
 
 if __name__ == '__main__':
+    # clear cache
+
+
     o = Octopus()
 
-    url_list = ['noballs.co.uk/',
-                'movimentoapparel.com/',
-                'veganrobs.com/',
-                'getyuve.com/',
-                'effifoods.com/'
-        ]
+    o.vaccuum_files()
 
-    v = multiprocessing.Process(target=vaccuum_files)
-    v.daemon = True
-    w = multiprocessing.Process(target=o.async_crawl, args = [url_list])
-    jobs = [v, w]
+    url_list = [
+        'noballs.co.uk/',
+        'movimentoapparel.com/',
+        'veganrobs.com/',
+        'getyuve.com/'
+        'effifoods.com/',
 
-    v.start()
+        'vsstuff.com/' ,
+        'mitzaccessories.com/',
+        'nohikids.com/'
+    ]
+
+    # v = multiprocessing.Process(target=vaccuum_daemon)
+    # v.daemon = True
+    w = multiprocessing.Process(target=o.async_crawl, args=[url_list])
+    # jobs = [v, w]
+
+    # v.start()
     w.start()
 
-    v.join()
-    w.join()
+    # w.join()
+    # v.terminate()
+
+    # clear cache again
+    # vaccuum_files()
 
 
+    free = psutil.virtual_memory().free
+    percent = psutil.virtual_memory().percent
 
+    while True:
+        if w.is_alive():
+            o.vaccuum_files()
+        else:
+            break
+        time.sleep(5)
 
-
-
-
+    o.vaccuum_files()
