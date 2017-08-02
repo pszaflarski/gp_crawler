@@ -51,44 +51,47 @@ class Crawler:
         source = ''
         current_url = page
 
-        # try:
-        if start_url is None:
-            # this will guess at what the start_url should be
-            p = urlparse(page)
-            start_url = "{scheme}://{netloc}".format(scheme=p.scheme, netloc=p.netloc)
+        try:
+            if start_url is None:
+                # this will guess at what the start_url should be
+                p = urlparse(page)
+                if p.netloc == '':
+                    p = urlparse('http://' + page)
 
-        self.driver = urlget(self.driver, page)
+                start_url = "{scheme}://{netloc}".format(scheme=p.scheme, netloc=p.netloc)
 
-        source = page_source(self.driver)
+            self.driver = urlget(self.driver, page)
 
-        tree = etree_pipeline_fromstring(source)
+            source = page_source(self.driver)
 
-        current_url = self.driver.current_url
-        links = self._get_links(tree)
+            tree = etree_pipeline_fromstring(source)
 
-        external = {x for x in links if not self._is_internal(start_url, x)}
-        internal = {x for x in links if x not in external}
+            current_url = self.driver.current_url
+            links = self._get_links(tree)
 
-        non_http = {x for x in internal if urlparse(x).scheme not in {'http', 'https', ''}}
-        internal = {x for x in internal if x not in non_http}
+            external = {x for x in links if not self._is_internal(start_url, x)}
+            internal = {x for x in links if x not in external}
 
-        out_dict = {
-            'internal': internal,
-            'non_http': non_http,
-            'external': external,
-            'page_source': source,
-            'url': current_url,
-            'exception': None
-        }
-        # except Exception as exc:
-        #     out_dict = {
-        #         'internal': internal,
-        #         'non_http': non_http,
-        #         'external': external,
-        #         'page_source': source,
-        #         'url': current_url,
-        #         'exception': str(exc)
-        #     }
+            non_http = {x for x in internal if urlparse(x).scheme not in {'http', 'https', ''}}
+            internal = {x for x in internal if x not in non_http}
+
+            out_dict = {
+                'internal': internal,
+                'non_http': non_http,
+                'external': external,
+                'page_source': source,
+                'url': current_url,
+                'exception': None
+            }
+        except Exception as exc:
+            out_dict = {
+                'internal': internal,
+                'non_http': non_http,
+                'external': external,
+                'page_source': source,
+                'url': current_url,
+                'exception': str(exc)
+            }
 
         return out_dict
 
@@ -113,7 +116,7 @@ class Crawler:
         else:
             _start_url = start_url
         del _p
-        _start_url = _start_url.replace('///','//')
+        _start_url = _start_url.replace('///', '//')
 
         if resume_from is not None:
             progress_data = resume_from
@@ -211,6 +214,7 @@ class Crawler:
 
         progress_data['state'] = 'complete'
         success = self._save_progress(progress_data)
+        self.driver.quit()
         if not silent:
             print(_start_url, 'All Done! saved -', success)
 
@@ -256,10 +260,11 @@ class Crawler:
         return links_on_page
 
     def _is_internal(self, base_url, url):
+
         try:
             p = urlparse(url)
 
-            netloc_equal_condition = urlparse(base_url).netloc == p.netloc
+            netloc_equal_condition = urlparse(base_url).netloc.replace('www.', '') == p.netloc.replace('www.', '')
             no_scheme_condition = p.scheme == '' and '.' not in p.netloc
 
             is_internal = netloc_equal_condition or no_scheme_condition
@@ -392,10 +397,6 @@ class Crawler:
         return success
 
     def _save_progress(self, resume_data):
-        print(resume_data)
-
-        input()
-
 
         success = True
         try:
@@ -419,7 +420,11 @@ if __name__ == '__main__':
                 'veganrobs.com/',
                 'getyuve.com/',
                 'effifoods.com/'
-    ]
+                ]
 
     # c.async_crawl_sites(url_list)
-    c.crawl_site(url_list[2])
+    # c.crawl_site(url_list[4], resume=False)
+
+    # d = c.crawl_one(url_list[4])
+    # print(d.pop('page_source'))
+    # print(d)
