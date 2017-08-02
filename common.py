@@ -78,6 +78,13 @@ def to_number(s):
     except:
         return None
 
+def close_webdriver(driver):
+    try:
+        driver.quit()
+    except AttributeError:
+        pass
+
+
 
 def init_webdriver(headless=True):
     if platform.system() == 'Windows':

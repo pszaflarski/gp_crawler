@@ -214,7 +214,9 @@ class Crawler:
 
         progress_data['state'] = 'complete'
         success = self._save_progress(progress_data)
-        self.driver.quit()
+
+        close_webdriver(self.driver)
+
         if not silent:
             print(_start_url, 'All Done! saved -', success)
 
