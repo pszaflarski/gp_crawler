@@ -141,7 +141,10 @@ class CrawlerDataConnector:
         cols = {str(x).split('.')[-1] for x in self.progress_data.columns}
 
         for file in progress_data_files:
-            data = {x: y for x, y in pickle.load(open(file, 'rb')).items()}
+            try:
+                data = {x: y for x, y in pickle.load(open(file, 'rb')).items()}
+            except EOFError:
+                continue
 
             hashstring = str(file.split('/')[-1]).split('.')[0] + '.json'
             json_out = {x: _make_nice(y, to_db=False) for x, y in data.items()}
@@ -180,6 +183,8 @@ class CrawlerDataConnector:
             }
         else:
             return {}
+
+
 
     def _save_file(self, file_name, file_contents):
 

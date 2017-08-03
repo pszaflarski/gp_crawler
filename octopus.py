@@ -1,6 +1,7 @@
 from common import *
 
 from gp_crawler import *
+from db_connector import *
 
 
 class Octopus:
@@ -43,7 +44,31 @@ class Octopus:
         num_workers = 2
         self.crawler.async_crawl_sites(url_list, num_workers=num_workers)
 
+
+    def get_resume_file_from_s3(self, start_url):
+        hashbase = sha256(fix_url(start_url).encode('utf-8')).hexdigest()
+        filename = hashbase + '_progress.json'
+
+        try:
+            data = get_from_s3(filename, bucket=self.s3_bucket, cred_dict=self.s3_cred_dict)
+        except:
+            return
+        with open(join(self.file_path, filename), 'w', encoding='utf-8', errors='ignore') as f:
+            f.write(data)
+            f.close()
+
+    def get_resume_files_from_s3(self, start_urls, workers = 3):
+        for url in start_urls:
+            self.get_resume_file_from_s3(url)
+
+        # pool = multiprocessing.Pool(processes=workers)
+        #
+        # pool.map(self.get_resume_file_from_s3, start_urls)
+
     def vaccuum_files(self):
+        # this is awful and needs to be fixed - it relies on the ugly db_connector module and global
+        # variables
+
         if platform.system() == 'Windows':
             cmd = 'python db_connector.py'
         elif platform.system() == 'Linux':
@@ -53,48 +78,52 @@ class Octopus:
 
 
 if __name__ == '__main__':
-    # clear cache
 
+    # clear cache
+    url_list = set([
+            'noballs.co.uk/',
+            'movimentoapparel.com/',
+            'veganrobs.com/',
+            'getyuve.com/'
+            'effifoods.com/',
+
+            'vsstuff.com/' ,
+            'mitzaccessories.com/',
+            'nohikids.com/',
+
+            'milochie.com/',
+            'mitzaccessories.com/',
+            'nohikids.com/',
+            'ecocentricmom.com/',
+            'getyuve.com/',
+            'zaazee.co.uk/',
+            'vsstuff.com/',
+            'movimentoapparel.com/',
+            'veganrobs.com/',
+            'wodgearclothing.com/',
+            'kiragrace.com/',
+    ])
 
     o = Octopus()
-
     o.vaccuum_files()
 
-    url_list = [
-        'noballs.co.uk/',
-        'movimentoapparel.com/',
-        'veganrobs.com/',
-        'getyuve.com/'
-        'effifoods.com/',
-
-        'vsstuff.com/' ,
-        'mitzaccessories.com/',
-        'nohikids.com/'
-    ]
-
-    # v = multiprocessing.Process(target=vaccuum_daemon)
-    # v.daemon = True
+    o.get_resume_files_from_s3(url_list)
     w = multiprocessing.Process(target=o.async_crawl, args=[url_list])
-    # jobs = [v, w]
-
-    # v.start()
     w.start()
 
-    # w.join()
-    # v.terminate()
-
-    # clear cache again
-    # vaccuum_files()
-
-
-    free = psutil.virtual_memory().free
-    percent = psutil.virtual_memory().percent
+    vaccuum_interval = 5
 
     while True:
         if w.is_alive():
+            vaccuum_timer = time.time()
             o.vaccuum_files()
         else:
             break
-        time.sleep(5)
+        free = psutil.virtual_memory().free
+        percent = psutil.virtual_memory().percent
+
+        print(free,percent)
+        elapsed = time.time() - vaccuum_timer
+        time.sleep(max([vaccuum_interval-elapsed,0]))
 
     o.vaccuum_files()

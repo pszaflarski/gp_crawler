@@ -163,6 +163,18 @@ def etree_pipeline(driver):
 
     return tree
 
+def fix_url(url):
+    _p = urlparse(url)
+
+    if _p.scheme == '' or _p.scheme is None:
+        _start_url = urljoin('http://', _p.geturl())
+    else:
+        _start_url = url
+
+    _start_url = _start_url.replace('///', '//')
+
+    return _start_url
+
 
 def etree_pipeline_fromstring(source):
     parser = etree.HTMLParser(encoding='utf-8')

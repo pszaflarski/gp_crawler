@@ -109,14 +109,8 @@ class Crawler:
         :param silent: if True, crawler will not print progress to screen as it crawls
         :return: Nothing
         """
-        _p = urlparse(start_url)
 
-        if _p.scheme == '' or _p.scheme is None:
-            _start_url = urljoin('http://', _p.geturl())
-        else:
-            _start_url = start_url
-        del _p
-        _start_url = _start_url.replace('///', '//')
+        _start_url = fix_url(start_url)
 
         if resume_from is not None:
             progress_data = resume_from
@@ -279,8 +273,9 @@ class Crawler:
 
         def load_from_pickle(hashbase):
             try:
-                filename = os.path.join(self.file_path, hashbase + '_progress.pkl')
-                with open(filename, 'rb') as picklefile:
+                filename = hashbase + '_progress.pkl'
+                path_filename = os.path.join(self.file_path, filename)
+                with open(path_filename, 'rb') as picklefile:
                     resume_data = pickle.load(picklefile)
                 if resume_data['state'] == 'just started' or resume_data['visited'] == set():
                     resume_data['to_visit'] = {start_url}
@@ -291,15 +286,11 @@ class Crawler:
 
         def load_from_json(hashbase):
             try:
-
                 filename = hashbase + '_progress.json'
                 path_filename = os.path.join(self.file_path, filename)
 
-                if self.s3_bucket is None:
-                    with open(path_filename, 'r') as jsonfile:
-                        file_source = jsonfile.read()
-                else:
-                    file_source = get_from_s3(filename, bucket=self.s3_bucket, cred_dict=self.s3_cred_dict)
+                with open(path_filename, 'r') as jsonfile:
+                    file_source = jsonfile.read()
                 resume_data = json.loads(file_source)
                 if resume_data['state'] == 'just started' or resume_data['visited'] == set():
                     resume_data['to_visit'] = {start_url}
@@ -418,12 +409,12 @@ if __name__ == '__main__':
     c = Crawler()
 
     url_list = [
-                'noballs.co.uk/',
-                'movimentoapparel.com/',
-                'veganrobs.com/',
-                'getyuve.com/',
-                'effifoods.com/'
-                ]
+        'noballs.co.uk/',
+        'movimentoapparel.com/',
+        'veganrobs.com/',
+        'getyuve.com/',
+        'effifoods.com/'
+    ]
 
     # c.async_crawl_sites(url_list)
     # c.crawl_site(url_list[4], resume=False)
