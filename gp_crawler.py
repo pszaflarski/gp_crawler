@@ -129,6 +129,10 @@ class Crawler:
         progress_data = self._repair_progress_data(progress_data)
 
         while True:
+
+            if len(progress_data['visited']) >= max_site_size and len(progress_data['visited']) > 0:
+                break
+
             try:
                 url = progress_data['to_visit'].pop()
             except KeyError:
@@ -419,6 +423,7 @@ if __name__ == '__main__':
     # c.async_crawl_sites(url_list)
     # c.crawl_site(url_list[4], resume=False)
 
-    # d = c.crawl_one(url_list[4])
-    # print(d.pop('page_source'))
-    # print(d)
+    d = c.crawl_one('https://veganrobs.com/')
+    d = c.crawl_one('https://veganrobs.com/products/cauliflower-puffs.oembed#shop')
+    print(d.pop('page_source'))
+    print(d)

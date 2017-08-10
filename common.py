@@ -88,7 +88,7 @@ def close_webdriver(driver):
 
 
 
-def init_webdriver(headless=True):
+def init_webdriver(headless=True, download_folder = None):
     if platform.system() == 'Windows':
         chromedriver = "chromedriver.exe"
     elif platform.system() == 'Linux':
@@ -107,6 +107,12 @@ def init_webdriver(headless=True):
     chrome_options.add_argument("--disable-default-apps")
     chrome_options.add_argument("test-type=browser")
     chrome_options.add_argument("disable-infobars")
+
+    prefs = {"profile.default_content_settings.popups": 0,
+             "download.default_directory": r"C:\Users\pszaflarski\Google Drive\GitHub\PeterJacob\super_scraper\cache\\",  # IMPORTANT - ENDING SLASH V IMPORTANT
+             "directory_upgrade": True}
+    chrome_options.add_experimental_option("prefs", prefs)
+
     if headless:
         chrome_options.add_argument("--headless")
     driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
@@ -156,6 +162,12 @@ def delete_s3_file(filename, bucket, cred_dict):
 def load_creds(filename):
     return json.load(open(filename, 'r', encoding='utf-8', errors='ignore'))
 
+def remove_file(file):
+    try:
+        os.remove(file)
+        return None
+    except Exception as e:
+        return e
 
 def etree_pipeline(driver):
     source = page_source(driver)

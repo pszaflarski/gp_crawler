@@ -79,12 +79,7 @@ class CrawlerDataConnector:
         page_data_files = [join(self.file_path, x) for x in files if len(x) == 68 and '.pkl' in x]
         progress_data_files = [join(self.file_path, x) for x in files if len(x) == 77 and '.pkl' in x]
 
-        def _remove_file(file):
-            try:
-                os.remove(file)
-                return None
-            except Exception as e:
-                return e
+
 
         def _make_nice(x, to_db=True):
             if isinstance(x, set):
@@ -178,8 +173,8 @@ class CrawlerDataConnector:
 
         if delete_after_sync:
             return {
-                'progress_data_files': [_remove_file(x) for x in progress_data_files],
-                'page_data_files': [_remove_file(x) for x in page_data_files]
+                'progress_data_files': [remove_file(x) for x in progress_data_files],
+                'page_data_files': [remove_file(x) for x in page_data_files]
             }
         else:
             return {}
