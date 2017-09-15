@@ -14,18 +14,18 @@ class Octopus:
         if db_connection:
             self.db_connection = db_connection
         else:
-            self.db_connection = CONNECTION_STRING
+            self.db_connection = SECRET.CONNECTION_STRING
 
         if file_path:
             self.file_path = file_path
         else:
-            self.file_path = FILE_PATH
+            self.file_path = SECRET.FILE_PATH
 
         self.in_memory = in_memory
 
         if s3_bucket is None:
-            self.s3_bucket = S3_BUCKET
-            self.s3_cred_dict = S3_CREDS
+            self.s3_bucket = SECRET.S3_BUCKET
+            self.s3_cred_dict = SECRET.S3_CREDS
         else:
             self.s3_bucket = s3_bucket
             self.s3_cred_dict = s3_cred_dict
@@ -152,6 +152,9 @@ def run_octopus(octopus_instance, url_list, scrape_workers=3, vaccuum_interval=5
 
 
 if __name__ == '__main__':
+
+
+
     url_list = set([
         'noballs.co.uk/',
         'movimentoapparel.com/',
@@ -178,3 +181,7 @@ if __name__ == '__main__':
 
     o = Octopus()
     run_octopus(octopus_instance=o, url_list=url_list)
+
+
+
+

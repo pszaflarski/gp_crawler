@@ -34,8 +34,9 @@ from urllib.parse import urljoin
 from urllib.parse import urlparse
 from hashlib import sha256
 
-from secrets import *
+from secrets import config
 
+SECRET = config['default']
 
 def urlget(driver, url, tries=1):
     if driver is None: driver = init_webdriver()

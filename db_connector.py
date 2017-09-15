@@ -7,16 +7,16 @@ class CrawlerDataConnector:
         if db_connection:
             self.db_connection = db_connection
         else:
-            self.db_connection = CONNECTION_STRING
+            self.db_connection = SECRET.CONNECTION_STRING
 
         if file_path:
             self.file_path = file_path
         else:
-            self.file_path = FILE_PATH
+            self.file_path = SECRET.FILE_PATH
 
         if s3_bucket is None:
-            self.s3_bucket = S3_BUCKET
-            self.s3_cred_dict = S3_CREDS
+            self.s3_bucket = SECRET.S3_BUCKET
+            self.s3_cred_dict = SECRET.S3_CREDS
         else:
             self.s3_bucket = s3_bucket
             self.s3_cred_dict = s3_cred_dict
@@ -28,7 +28,7 @@ class CrawlerDataConnector:
             self.db.echo = False
             self.metadata = MetaData(self.db)
 
-            self.page_data = Table(PAGE_DATA_TABLE_NAME, self.metadata,
+            self.page_data = Table(SECRET.PAGE_DATA_TABLE_NAME, self.metadata,
                                    Column('start_url', TEXT, index=True),
                                    Column('url', TEXT, index=True),
                                    Column('internal', TEXT),
@@ -39,7 +39,7 @@ class CrawlerDataConnector:
                                    Column('scraped_at', DATETIME, index=True)
                                    )
 
-            self.progress_data = Table(PROGRESS_DATA_TABLE_NAME, self.metadata,
+            self.progress_data = Table(SECRET.PROGRESS_DATA_TABLE_NAME, self.metadata,
                                        Column('start_url', TEXT, index=True),
                                        Column('progress_file', TEXT),
                                        Column('last_activity', DATETIME, index=True),
@@ -50,9 +50,9 @@ class CrawlerDataConnector:
 
             self.db = create_engine(self.db_connection, isolation_level='AUTOCOMMIT')
             self.db.echo = False
-            self.metadata = MetaData(self.db, schema=SCHEMA)
+            self.metadata = MetaData(self.db, schema=SECRET.SCHEMA)
 
-            self.page_data = Table(PAGE_DATA_TABLE_NAME, self.metadata,
+            self.page_data = Table(SECRET.PAGE_DATA_TABLE_NAME, self.metadata,
                                    Column('start_url', postgresql.TEXT, index=True),
                                    Column('url', postgresql.TEXT, index=True),
                                    Column('internal', postgresql.JSONB),
@@ -62,7 +62,7 @@ class CrawlerDataConnector:
                                    Column('scraped_at', postgresql.TIMESTAMP, index=True)
                                    )
 
-            self.progress_data = Table(PROGRESS_DATA_TABLE_NAME, self.metadata,
+            self.progress_data = Table(SECRET.PROGRESS_DATA_TABLE_NAME, self.metadata,
                                        Column('start_url', postgresql.TEXT, primary_key=True),
                                        Column('progress_file', postgresql.TEXT),
                                        Column('last_activity', postgresql.TIMESTAMP, index=True),

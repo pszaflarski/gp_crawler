@@ -10,13 +10,13 @@ class Crawler:
         if file_path:
             self.file_path = file_path
         else:
-            self.file_path = FILE_PATH
+            self.file_path = SECRET.FILE_PATH
 
         self.in_memory = in_memory
 
         if s3_bucket is None:
-            self.s3_bucket = S3_BUCKET
-            self.s3_cred_dict = S3_CREDS
+            self.s3_bucket = SECRET.S3_BUCKET
+            self.s3_cred_dict = SECRET.S3_CREDS
         else:
             self.s3_bucket = s3_bucket
             self.s3_cred_dict = s3_cred_dict
