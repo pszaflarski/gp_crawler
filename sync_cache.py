@@ -79,7 +79,7 @@ def check_cache(start_url=None):
 
 
 if __name__ == '__main__':
-    start_url = 'http://chef5minutemeals.com'
+    start_url = 'http://simplyearth.com'
     creds = load_creds("credentials.json")
 
     try:
@@ -92,6 +92,6 @@ if __name__ == '__main__':
     yn = input("resync " + start_url + "?(y/n)").lower()
 
     if yn == 'y':
-        sync_from_postgres(start_url, creds, table=creds['postgres_path'], bucket=creds['s3_bucket'], workers=10)
+        sync_from_postgres(start_url, creds, table=creds['postgres_path'], bucket=creds['s3_bucket'], workers=3)
     else:
         print("sync not complete")

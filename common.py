@@ -9,7 +9,6 @@ from selenium.webdriver.chrome.options import Options
 
 from sqlalchemy import *
 
-
 from openpyxl import Workbook
 
 from lxml import html
@@ -37,12 +36,13 @@ from hashlib import sha256
 
 from secrets import *
 
+
 def urlget(driver, url, tries=1):
     if driver is None: driver = init_webdriver()
 
     p = urlparse(url)
     if p.scheme == '' or p.scheme is None:
-        url = urljoin('http://',url)
+        url = urljoin('http://', url)
 
     for i in range(tries):
         try:
@@ -80,6 +80,7 @@ def to_number(s):
     except:
         return None
 
+
 def close_webdriver(driver):
     try:
         driver.quit()
@@ -87,8 +88,7 @@ def close_webdriver(driver):
         pass
 
 
-
-def init_webdriver(headless=True, download_folder = None):
+def init_webdriver(headless=True, download_folder=None):
     if platform.system() == 'Windows':
         chromedriver = "chromedriver.exe"
     elif platform.system() == 'Linux':
@@ -109,7 +109,8 @@ def init_webdriver(headless=True, download_folder = None):
     chrome_options.add_argument("disable-infobars")
 
     prefs = {"profile.default_content_settings.popups": 0,
-             "download.default_directory": r"C:\Users\pszaflarski\Google Drive\GitHub\PeterJacob\super_scraper\cache\\",  # IMPORTANT - ENDING SLASH V IMPORTANT
+             "download.default_directory": r"C:\Users\pszaflarski\Google Drive\GitHub\PeterJacob\super_scraper\cache\\",
+             # IMPORTANT - ENDING SLASH V IMPORTANT
              "directory_upgrade": True}
     chrome_options.add_experimental_option("prefs", prefs)
 
@@ -162,6 +163,7 @@ def delete_s3_file(filename, bucket, cred_dict):
 def load_creds(filename):
     return json.load(open(filename, 'r', encoding='utf-8', errors='ignore'))
 
+
 def remove_file(file):
     try:
         os.remove(file)
@@ -169,11 +171,13 @@ def remove_file(file):
     except Exception as e:
         return e
 
+
 def etree_pipeline(driver):
     source = page_source(driver)
     tree = etree_pipeline_fromstring(source)
 
     return tree
+
 
 def fix_url(url):
     _p = urlparse(url)
@@ -249,6 +253,7 @@ def csv_to_xl(csv_file_source, xlsx_filename, encoding='utf-8'):
             ws.append(row)
 
     wb.save(xlsx_filename)
+
 
 if __name__ == '__main__':
     pass
