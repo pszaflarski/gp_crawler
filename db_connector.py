@@ -79,8 +79,6 @@ class CrawlerDataConnector:
         page_data_files = [join(self.file_path, x) for x in files if len(x) == 68 and '.pkl' in x]
         progress_data_files = [join(self.file_path, x) for x in files if len(x) == 77 and '.pkl' in x]
 
-
-
         def _make_nice(x, to_db=True):
             if isinstance(x, set):
                 x = list(x)
@@ -178,8 +176,6 @@ class CrawlerDataConnector:
             }
         else:
             return {}
-
-
 
     def _save_file(self, file_name, file_contents):
 

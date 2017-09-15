@@ -73,7 +73,7 @@ class Octopus:
                      'json' in x or
                      'pkl' in x)]
 
-        do_remove = {x:remove_file(x) for x in files}
+        do_remove = {x: remove_file(x) for x in files}
         return do_remove
 
     def vaccuum_files(self, d=None):
@@ -86,6 +86,7 @@ class Octopus:
         else:
             d = json.dumps(d)
 
+        # this will create a dictionary object that will pass to the db_connector
         d = json.dumps({'': d})[4:-1]
 
         cmd = None
@@ -102,49 +103,24 @@ class Octopus:
         subprocess.call(cmd, shell=True)
 
 
-if __name__ == '__main__':
+def run_octopus(octopus_instance, url_list, scrape_workers=3, vaccuum_interval=5, max_percent=90, min_free=500000000):
+    # This is a convenience function that runs the octopus with some nice parameters
+    # All you need to do is pass an octopus instance and a url list, and create a secrets.py file
+    # and you're off to the races
 
-    vaccuum_interval = 5
-    max_percent = 90
-    min_free = 500000000
     completed = False
+    o = octopus_instance
 
-    o = Octopus()
     o.vaccuum_files()
     o.clear_cache()
-
-
-    url_list = set([
-        'noballs.co.uk/',
-        'movimentoapparel.com/',
-        'veganrobs.com/',
-        'getyuve.com/',
-        'effifoods.com/',
-
-        'vsstuff.com/',
-        'mitzaccessories.com/',
-        'nohikids.com/',
-
-        'milochie.com/',
-        'mitzaccessories.com/',
-        'nohikids.com/',
-        'ecocentricmom.com/',
-        'getyuve.com/',
-        'zaazee.co.uk/',
-        'vsstuff.com/',
-        'movimentoapparel.com/',
-        'veganrobs.com/',
-        'wodgearclothing.com/',
-        'kiragrace.com/']
-    )
 
     while True:
 
         # clear cache
         o.vaccuum_files()
-
         o.get_resume_files_from_s3(url_list)
-        w = multiprocessing.Process(target=o.async_crawl, args=[url_list, 3])
+        w = multiprocessing.Process(target=o.async_crawl, args=[url_list, scrape_workers])
+
         w.start()
 
         while True:
@@ -173,3 +149,32 @@ if __name__ == '__main__':
 
     o.vaccuum_files()
     o.clear_cache()
+
+
+if __name__ == '__main__':
+    url_list = set([
+        'noballs.co.uk/',
+        'movimentoapparel.com/',
+        'veganrobs.com/',
+        'getyuve.com/',
+        'effifoods.com/',
+
+        'vsstuff.com/',
+        'mitzaccessories.com/',
+        'nohikids.com/',
+
+        'milochie.com/',
+        'mitzaccessories.com/',
+        'nohikids.com/',
+        'ecocentricmom.com/',
+        'getyuve.com/',
+        'zaazee.co.uk/',
+        'vsstuff.com/',
+        'movimentoapparel.com/',
+        'veganrobs.com/',
+        'wodgearclothing.com/',
+        'kiragrace.com/']
+    )
+
+    o = Octopus()
+    run_octopus(octopus_instance=o, url_list=url_list)

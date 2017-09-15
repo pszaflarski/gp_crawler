@@ -11,7 +11,6 @@ if __name__ == '__main__':
         cdc = CrawlerDataConnector()
         cdc.cache_to_db()
     else:
-
         params = json.loads(args.params)
         cdc = CrawlerDataConnector(**params)
         cdc.cache_to_db()
