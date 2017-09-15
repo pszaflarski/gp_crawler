@@ -1,4 +1,4 @@
-from .db_connector import *
+from db_connector import *
 import argparse
 
 if __name__ == '__main__':

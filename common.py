@@ -34,7 +34,7 @@ from urllib.parse import urljoin
 from urllib.parse import urlparse
 from hashlib import sha256
 
-from .secrets import config
+from secrets import config
 
 SECRET = config['default']
 
