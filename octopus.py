@@ -1,7 +1,7 @@
-from common import *
+from .common import *
 
-from gp_crawler import *
-from db_connector import *
+from .gp_crawler import *
+from .db_connector import *
 
 
 class Octopus:
