@@ -8,7 +8,7 @@ In order to set up an EC2 to work with the crawler you need to run the following
 
 >sudo dpkg -i --force-depends google-chrome-stable_current_amd64.deb
 
->sudo apt-get install -f
+>sudo apt-get -y install -f
 
 >sudo apt-get -y install python3-pip
 
